@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useFinanceStore } from "@/stores/useFinanceStore";
 import { ChevronDown, ChevronRight, Trash2, Pencil, Save } from "lucide-react";
 
@@ -72,7 +72,9 @@ function TransactionSubRow({
             className="h-8 rounded-md bg-neutral-900 border border-neutral-700 px-2"
           />
         ) : (
-          <span className="font-medium">{new Date(txn.date).toLocaleDateString()}</span>
+          <span className="font-medium">
+            {new Date(txn.date).toLocaleDateString()}
+          </span>
         )}
       </td>
 
@@ -153,9 +155,13 @@ function TransactionSubRow({
             className="h-8 rounded-md bg-neutral-900 border border-neutral-700 px-2 text-right"
           />
         ) : txn.type === "income" ? (
-          <span className="text-green-400 font-medium">£{txn.amount.toFixed(2)}</span>
+          <span className="text-green-400 font-medium">
+            £{txn.amount.toFixed(2)}
+          </span>
         ) : txn.type === "expense" ? (
-          <span className="text-red-400 font-medium">£{txn.amount.toFixed(2)}</span>
+          <span className="text-red-400 font-medium">
+            £{txn.amount.toFixed(2)}
+          </span>
         ) : (
           <span>£{txn.amount.toFixed(2)}</span>
         )}
@@ -252,8 +258,12 @@ export default function TransactionsTable() {
   );
 
   const groups = useMemo(() => {
-    const snaps = [...snapshots].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // newest first
-    const txns = [...transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // newest first
+    const snaps = [...snapshots].sort((a, b) =>
+      a.date < b.date ? 1 : a.date > b.date ? -1 : 0
+    ); // newest first
+    const txns = [...transactions].sort((a, b) =>
+      a.date < b.date ? 1 : a.date > b.date ? -1 : 0
+    ); // newest first
 
     if (snaps.length === 0) {
       return [
@@ -296,7 +306,8 @@ export default function TransactionsTable() {
         return leqCurrent && gtNext;
       });
 
-      const netWorth = (s.bankCash ?? 0) + (s.investments ?? 0) - (s.creditUsed ?? 0);
+      const netWorth =
+        (s.bankCash ?? 0) + (s.investments ?? 0) - (s.creditUsed ?? 0);
 
       out.push({
         id: s.id,
@@ -335,32 +346,55 @@ export default function TransactionsTable() {
         </thead>
         <tbody>
           {groups.map((g) => (
-            <>
+            <Fragment key={g.id}>
               {/* Checkpoint row */}
-              <tr key={g.id} className="border-t border-neutral-800 bg-neutral-950/60">
+              <tr
+                key={g.id}
+                className="border-t border-neutral-800 bg-neutral-950/60"
+              >
                 <td className="px-3 align-middle">
                   <button
                     aria-label={open[g.id] ? "Collapse" : "Expand"}
                     onClick={() => toggle(g.id)}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100"
                   >
-                    {open[g.id] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    {open[g.id] ? (
+                      <ChevronDown size={16} />
+                    ) : (
+                      <ChevronRight size={16} />
+                    )}
                   </button>
                 </td>
                 <td className="px-4 py-2 font-medium">{g.title}</td>
                 <td className="px-4 py-2 text-right tabular-nums">
-                  {g.creditAvailable === undefined ? "—" : `£${g.creditAvailable.toFixed(2)}`}
+                  {g.creditAvailable === undefined
+                    ? "—"
+                    : `£${g.creditAvailable.toFixed(2)}`}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums">£{(g.creditUsed ?? 0).toFixed(2)}</td>
-                <td className="px-4 py-2 text-right tabular-nums">£{(g.investments ?? 0).toFixed(2)}</td>
-                <td className="px-4 py-2 text-right tabular-nums">£{(g.bankCash ?? 0).toFixed(2)}</td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold">£{g.netWorth.toFixed(2)}</td>
+                <td className="px-4 py-2 text-right tabular-nums">
+                  £{(g.creditUsed ?? 0).toFixed(2)}
+                </td>
+                <td className="px-4 py-2 text-right tabular-nums">
+                  £{(g.investments ?? 0).toFixed(2)}
+                </td>
+                <td className="px-4 py-2 text-right tabular-nums">
+                  £{(g.bankCash ?? 0).toFixed(2)}
+                </td>
+                <td className="px-4 py-2 text-right tabular-nums font-semibold">
+                  {typeof g.netWorth === "number"
+                    ? `£${g.netWorth.toFixed(2)}`
+                    : "—"}
+                </td>
                 <td className="px-2 py-2 text-center">
                   {g.id !== "_no_snapshot" && (
                     <button
                       aria-label="Delete snapshot"
                       onClick={() => {
-                        if (confirm("Delete this snapshot? Transactions remain unaffected.")) {
+                        if (
+                          confirm(
+                            "Delete this snapshot? Transactions remain unaffected."
+                          )
+                        ) {
                           deleteSnapshot(g.id);
                         }
                       }}
@@ -410,7 +444,7 @@ export default function TransactionsTable() {
                   )}
                 </>
               )}
-            </>
+            </Fragment>
           ))}
         </tbody>
       </table>

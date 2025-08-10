@@ -82,20 +82,12 @@ type FinanceState = {
   savingsRate: (d?: Date) => number;
   balanceByAccount: (accountId: string) => number;
 
-  // Historical balance snapshots (for fast backfill)
+  // Historical balance snapshots
   snapshots: Snapshot[];
   addSnapshot: (s: Omit<Snapshot, "id">) => string;
   deleteSnapshot: (id: string) => void;
-  updateSnapshot: (
-    id: string,
-    patch: {
-      date?: string;
-      bankCash?: number;
-      creditUsed?: number;
-      creditAvailable?: number;
-      investments?: number;
-    }
-  ) => void;
+  updateSnapshot: (id: string, patch: Partial<Snapshot>) => void;
+
   // Compute net worth at an arbitrary date using latest snapshot <= date + cashflow since
   netWorthAt: (at: Date) => number;
 
@@ -109,6 +101,12 @@ type FinanceState = {
     rangeFrom: Date,
     rangeTo: Date
   ) => { date: Date; value: number }[];
+
+  // NEW: reconcile per-account balances at a date (creates adjustment txns)
+  reconcileAccountsAt: (
+    dateISO: string,
+    targets: Record<string, number>
+  ) => void;
 };
 
 // ---------- Implementation
@@ -122,13 +120,37 @@ export const useFinanceStore = create<FinanceState>()(
 
       addSnapshot: (s) => {
         const id = nanoid();
+
+        // If accountBalances are provided, derive totals to keep data consistent
+        let bankCash = s.bankCash ?? 0;
+        let creditUsed = s.creditUsed ?? 0;
+        let investments = s.investments ?? 0;
+
+        if (s.accountBalances) {
+          const { accounts } = get();
+          const map = s.accountBalances as Record<string, number>;
+          for (const [accId, raw] of Object.entries(map)) {
+            const bal = Number(raw) || 0;
+            const acc = accounts.find((a) => a.id === accId);
+            if (!acc) continue;
+            if (acc.type === "credit") {
+              creditUsed += Math.max(0, bal); // treat as positive outstanding
+            } else if (acc.type === "investment") {
+              investments += bal;
+            } else {
+              bankCash += bal;
+            }
+          }
+        }
+
         const clean: Snapshot = {
           id,
           date: new Date(s.date).toISOString().slice(0, 10), // keep YYYY-MM-DD
-          bankCash: s.bankCash ?? 0,
-          creditUsed: s.creditUsed ?? 0,
+          bankCash,
+          creditUsed,
           creditAvailable: s.creditAvailable,
-          investments: s.investments ?? 0,
+          investments,
+          accountBalances: s.accountBalances,
         };
         set((st) => ({
           snapshots: [...st.snapshots, clean].sort((a, b) =>
@@ -137,6 +159,7 @@ export const useFinanceStore = create<FinanceState>()(
         }));
         return id;
       },
+
       updateSnapshot: (id, patch) => {
         set((st) => {
           const next = st.snapshots.map((s) =>
@@ -144,7 +167,6 @@ export const useFinanceStore = create<FinanceState>()(
               ? { ...s, ...patch, date: (patch.date ?? s.date).slice(0, 10) }
               : s
           );
-          // keep snapshots sorted by date
           next.sort((a, b) => a.date.localeCompare(b.date));
           return { snapshots: next };
         });
@@ -222,12 +244,15 @@ export const useFinanceStore = create<FinanceState>()(
               if (t.accountId === accountId) bal -= t.amount; // FROM
               if (t.transferAccountId === accountId) bal += t.amount; // TO
               break;
+            case "adjustment": // NEW
+              if (t.accountId === accountId) bal += t.amount; // delta we applied
+              break;
           }
         }
         return bal;
       },
 
-      // Net worth is the sum of all account balances (credit accounts will be negative if you owe)
+      // Net worth is the sum of all account balances
       netWorth: () => {
         const { accounts } = get();
         return accounts.reduce(
@@ -242,7 +267,9 @@ export const useFinanceStore = create<FinanceState>()(
         return txns
           .filter(
             (t) =>
-              t.type === "income" && isWithinInterval(parseISO(t.date), range)
+              t.type === "income" &&
+              !t.isReconcile && // exclude adjustments
+              isWithinInterval(parseISO(t.date), range)
           )
           .reduce((s, t) => s + t.amount, 0);
       },
@@ -250,12 +277,12 @@ export const useFinanceStore = create<FinanceState>()(
       monthExpenses: (d = new Date()) => {
         const txns = get().transactions;
         const range = { start: startOfMonth(d), end: endOfMonth(d) };
-        // expenses + transfers/invest/debt that reduce cash this month count as outflow for the month-level “expenses”?
-        // For now keep “expenses” strict; cashflow chart already shows net using both.
         return txns
           .filter(
             (t) =>
-              t.type === "expense" && isWithinInterval(parseISO(t.date), range)
+              t.type === "expense" &&
+              !t.isReconcile && // exclude adjustments
+              isWithinInterval(parseISO(t.date), range)
           )
           .reduce((s, t) => s + t.amount, 0);
       },
@@ -270,9 +297,14 @@ export const useFinanceStore = create<FinanceState>()(
       netWorthAt: (at) => {
         const anchor = get().latestSnapshotOnOrBefore(at);
         const base = anchor
-          ? (anchor.bankCash ?? 0) + (anchor.investments ?? 0) - (anchor.creditUsed ?? 0)
+          ? (anchor.bankCash ?? 0) +
+            (anchor.investments ?? 0) -
+            (anchor.creditUsed ?? 0)
           : 0;
-        const delta = get().sumCashflowBetween(anchor ? parseISO(anchor.date) : null, at);
+        const delta = get().sumCashflowBetween(
+          anchor ? parseISO(anchor.date) : null,
+          at
+        );
         return base + delta;
       },
 
@@ -283,27 +315,34 @@ export const useFinanceStore = create<FinanceState>()(
           .sort((a, b) => b.date.localeCompare(a.date))[0];
       },
 
-      // Sum of income minus expenses strictly after `startExclusive` and up to and including `endInclusive`.
+      // Sum income − expense strictly after startExclusive and up to & including endInclusive
       sumCashflowBetween: (startExclusive, endInclusive) => {
         const { transactions } = get();
         let sum = 0;
         for (const t of transactions) {
           const d = parseISO(t.date);
-          if (startExclusive && (isBefore(d, startExclusive) || isEqual(d, startExclusive))) continue;
+          if (
+            startExclusive &&
+            (isBefore(d, startExclusive) || isEqual(d, startExclusive))
+          )
+            continue;
           if (isBefore(endInclusive, d)) continue;
+          if (t.isReconcile) continue; // NEW: don't count adjustments as cashflow
           if (t.type === "income") sum += t.amount;
           else if (t.type === "expense") sum -= t.amount;
-          // transfer/invest/debt do not change net worth
         }
         return sum;
       },
 
-      // End-of-month net worth series across [rangeFrom, rangeTo], using snapshots + transactions.
+      // End-of-month net worth series across [rangeFrom, rangeTo]
       netWorthSeries: (rangeFrom, rangeTo) => {
         const pts: { date: Date; value: number }[] = [];
 
-        // Normalize to month starts
-        const start = new Date(rangeFrom.getFullYear(), rangeFrom.getMonth(), 1);
+        const start = new Date(
+          rangeFrom.getFullYear(),
+          rangeFrom.getMonth(),
+          1
+        );
         const end = new Date(rangeTo.getFullYear(), rangeTo.getMonth(), 1);
 
         let cursor = start;
@@ -312,11 +351,9 @@ export const useFinanceStore = create<FinanceState>()(
           const dateForPoint = eom <= rangeTo ? eom : rangeTo;
           const value = get().netWorthAt(dateForPoint);
           pts.push({ date: dateForPoint, value });
-          // advance one month
           cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
         }
 
-        // Ensure we include the final day if rangeTo is not end-of-month and not already included
         const lastPoint = pts[pts.length - 1];
         if (!lastPoint || lastPoint.date.getTime() !== rangeTo.getTime()) {
           pts.push({ date: rangeTo, value: get().netWorthAt(rangeTo) });
@@ -324,11 +361,68 @@ export const useFinanceStore = create<FinanceState>()(
 
         return pts;
       },
+
+      // NEW: create adjustment transactions (deltas) so each account equals target at date
+      reconcileAccountsAt: (dateISO, targets) => {
+        const { accounts, transactions } = get();
+
+        function balanceAtDate(accountId: string, at: Date) {
+          let bal = 0;
+          for (const t of transactions) {
+            const d = parseISO(t.date);
+            if (isBefore(at, d)) continue; // only include <= at
+            switch (t.type) {
+              case "income":
+                if (t.accountId === accountId) bal += t.amount;
+                break;
+              case "expense":
+                if (t.accountId === accountId) bal -= t.amount;
+                break;
+              case "transfer":
+              case "invest":
+              case "debt":
+                if (t.accountId === accountId) bal -= t.amount;
+                if (t.transferAccountId === accountId) bal += t.amount;
+                break;
+              case "adjustment":
+                if (t.accountId === accountId) bal += t.amount;
+                break;
+            }
+          }
+          return bal;
+        }
+
+        const at = new Date(dateISO);
+        const adjustments: Transaction[] = [];
+
+        for (const acc of accounts) {
+          const target = targets[acc.id];
+          if (target === undefined || target === null) continue;
+          const current = balanceAtDate(acc.id, at);
+          const delta = target - current;
+          if (Math.abs(delta) < 1e-9) continue;
+
+          adjustments.push({
+            id: nanoid(),
+            type: "adjustment",
+            date: new Date(dateISO).toISOString(),
+            accountId: acc.id,
+            amount: delta, // delta to hit target
+            note: "Reconcile to snapshot",
+            isReconcile: true,
+            createdAt: nowISO(),
+          });
+        }
+
+        if (adjustments.length) {
+          set((s) => ({ transactions: [...adjustments, ...s.transactions] }));
+        }
+      },
     }),
     {
       name: "ls-finance-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3, // bumped because of new fields/logic
     }
   )
 );
