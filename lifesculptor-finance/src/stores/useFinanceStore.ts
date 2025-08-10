@@ -1,8 +1,16 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { nanoid } from "nanoid";
-import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
+import {
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+  parseISO,
+  isBefore,
+  isEqual,
+} from "date-fns";
 import type { Account, Category, Transaction } from "@/types/finance";
+import type { Snapshot } from "@/types/finance";
 
 // ---------- Helpers
 const nowISO = () => new Date().toISOString();
@@ -73,6 +81,23 @@ type FinanceState = {
   monthExpenses: (d?: Date) => number;
   savingsRate: (d?: Date) => number;
   balanceByAccount: (accountId: string) => number;
+
+  // Historical balance snapshots (for fast backfill)
+  snapshots: Snapshot[];
+  addSnapshot: (s: Omit<Snapshot, "id">) => string;
+  deleteSnapshot: (id: string) => void;
+  updateSnapshot: (
+    id: string,
+    patch: {
+      date?: string;
+      bankCash?: number;
+      creditUsed?: number;
+      creditAvailable?: number;
+      investments?: number;
+    }
+  ) => void;
+  // Compute net worth at an arbitrary date using latest snapshot <= date + cashflow since
+  netWorthAt: (at: Date) => number;
 };
 
 // ---------- Implementation
@@ -82,6 +107,41 @@ export const useFinanceStore = create<FinanceState>()(
       accounts: SEED_ACCOUNTS,
       categories: DEFAULT_CATEGORIES,
       transactions: [],
+      snapshots: [],
+
+      addSnapshot: (s) => {
+        const id = nanoid();
+        const clean: Snapshot = {
+          id,
+          date: new Date(s.date).toISOString().slice(0, 10), // keep YYYY-MM-DD
+          bankCash: s.bankCash ?? 0,
+          creditUsed: s.creditUsed ?? 0,
+          creditAvailable: s.creditAvailable,
+          investments: s.investments ?? 0,
+        };
+        set((st) => ({
+          snapshots: [...st.snapshots, clean].sort((a, b) =>
+            a.date.localeCompare(b.date)
+          ),
+        }));
+        return id;
+      },
+      updateSnapshot: (id, patch) => {
+        set((st) => {
+          const next = st.snapshots.map((s) =>
+            s.id === id
+              ? { ...s, ...patch, date: (patch.date ?? s.date).slice(0, 10) }
+              : s
+          );
+          // keep snapshots sorted by date
+          next.sort((a, b) => a.date.localeCompare(b.date));
+          return { snapshots: next };
+        });
+      },
+
+      deleteSnapshot: (id) => {
+        set((st) => ({ snapshots: st.snapshots.filter((x) => x.id !== id) }));
+      },
 
       // Accounts
       addAccount: (input) => {
@@ -194,6 +254,37 @@ export const useFinanceStore = create<FinanceState>()(
         const expense = get().monthExpenses(d);
         if (income === 0) return 0;
         return (income - expense) / income;
+      },
+
+      netWorthAt: (at) => {
+        const { snapshots, transactions } = get();
+
+        // 1) Find latest snapshot on/before `at`
+        const anchor = [...snapshots]
+          .filter((s) => !isBefore(at, parseISO(s.date)))
+          .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+        const base = anchor
+          ? (anchor.bankCash ?? 0) +
+            (anchor.investments ?? 0) -
+            (anchor.creditUsed ?? 0)
+          : 0;
+
+        const anchorDate = anchor ? parseISO(anchor.date) : undefined;
+
+        // 2) Add net cashflow (income - expenses) from just after anchor to `at`
+        let delta = 0;
+        for (const t of transactions) {
+          const d = parseISO(t.date);
+          if (anchorDate && (isBefore(d, anchorDate) || isEqual(d, anchorDate)))
+            continue;
+          if (isBefore(at, d)) continue;
+
+          if (t.type === "income") delta += t.amount;
+          else if (t.type === "expense") delta -= t.amount;
+          // transfer/invest/debt => no net worth change
+        }
+        return base + delta;
       },
     }),
     {

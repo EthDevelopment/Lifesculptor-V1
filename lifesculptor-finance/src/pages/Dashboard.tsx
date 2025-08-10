@@ -35,26 +35,40 @@ export default function Dashboard() {
   const [range, setRange] = useState<RangeKey>("12m");
 
   const { cashflow, netWorthSeries, hasData } = useMemo(() => {
-    if (txns.length === 0)
-      return { cashflow: [], netWorthSeries: [], hasData: false };
+    const txnsLocal = txns;
+    const snapshots = useFinanceStore.getState().snapshots;
+    const netWorthAt = useFinanceStore.getState().netWorthAt;
 
-    // earliest month present in transactions
-    const earliest = txns
-      .map((t) => parseISO(t.date))
-      .sort((a, b) => +a - +b)[0];
+    // When we have snapshots, we can show a net-worth series even if there are no txns
+    const hasSnapshots = snapshots.length > 0;
+    const hasTxns = txnsLocal.length > 0;
 
-    // months to show
+    // months range: if ALL -> from earliest (snapshot or txn), else last N months
+    const earliestDate = (() => {
+      const earliestTxn = hasTxns
+        ? txnsLocal.map((t) => parseISO(t.date)).sort((a, b) => +a - +b)[0]
+        : undefined;
+      const earliestSnap = hasSnapshots
+        ? parseISO(snapshots[0].date + "T00:00:00Z")
+        : undefined;
+
+      if (earliestTxn && earliestSnap) {
+        return +earliestTxn < +earliestSnap ? earliestTxn : earliestSnap;
+      }
+      return earliestTxn || earliestSnap || new Date();
+    })();
+
     let monthsToShow = 12;
     if (range === "6m") monthsToShow = 6;
     if (range === "24m") monthsToShow = 24;
     if (range === "all") {
       monthsToShow = Math.max(
         1,
-        differenceInMonths(new Date(), startOfMonth(earliest)) + 1
+        differenceInMonths(new Date(), startOfMonth(earliestDate)) + 1
       );
     }
 
-    // build month buckets ending at current month
+    // Build month buckets ending at current month
     const months: { date: Date; label: string }[] = [];
     const now = new Date();
     for (let i = monthsToShow - 1; i >= 0; i--) {
@@ -62,35 +76,58 @@ export default function Dashboard() {
       months.push({ date: d, label: format(d, "MMM yy") });
     }
 
-    // aggregate income/expense by month from transactions (historical + current)
+    // Cashflow bars still use txns only (income/expense)
     const cash = months.map((m) => {
       let income = 0;
       let expense = 0;
-      for (const t of txns) {
-        const td = parseISO(t.date);
-        if (isSameMonth(td, m.date)) {
-          if (t.type === "income") income += t.amount;
-          if (t.type === "expense") expense += t.amount;
+      if (hasTxns) {
+        for (const t of txnsLocal) {
+          const td = parseISO(t.date);
+          if (isSameMonth(td, m.date)) {
+            if (t.type === "income") income += t.amount;
+            if (t.type === "expense") expense += t.amount;
+          }
         }
       }
       return { month: m.label, income, expense, net: income - expense };
     });
 
-    // net worth line: cumulative monthly net, offset so last point equals current net worth
-    const deltas = cash.map((c) => c.net);
-    const cum = deltas.reduce<number[]>((arr, d, i) => {
-      const prev = i === 0 ? 0 : arr[i - 1];
-      arr.push(prev + d);
-      return arr;
-    }, []);
-    const offset = netWorthNow - (cum[cum.length - 1] || 0);
-    const netSeries = months.map((m, i) => ({
-      month: m.label,
-      netWorth: cum[i] + offset,
-    }));
+    // Net worth series
+    let netSeries: { month: string; netWorth: number }[] = [];
+    if (hasSnapshots) {
+      netSeries = months.map((m) => ({
+        month: m.label,
+        netWorth: netWorthAt(m.date),
+      }));
+    } else if (hasTxns) {
+      // fallback to your current offset method
+      const deltas = cash.map((c) => c.net);
+      const cum = deltas.reduce<number[]>((arr, d, i) => {
+        const prev = i === 0 ? 0 : arr[i - 1];
+        arr.push(prev + d);
+        return arr;
+      }, []);
+      const offset = netWorthNow - (cum[cum.length - 1] || 0);
+      netSeries = months.map((m, i) => ({
+        month: m.label,
+        netWorth: cum[i] + offset,
+      }));
+    }
 
-    return { cashflow: cash, netWorthSeries: netSeries, hasData: true };
+    const someData = hasSnapshots || hasTxns;
+    return { cashflow: cash, netWorthSeries: netSeries, hasData: someData };
   }, [txns, netWorthNow, range]);
+
+  // After you compute `netWorthSeries` via useMemo:
+  const netWorthComposite = useMemo(() => {
+    // Turn [{ month, netWorth }] into [{ month, neg, mid, high }]
+    return netWorthSeries.map((d) => ({
+      month: d.month,
+      neg: d.netWorth < 0 ? d.netWorth : null,
+      mid: d.netWorth >= 0 && d.netWorth < 100_000 ? d.netWorth : null,
+      high: d.netWorth >= 100_000 ? d.netWorth : null,
+    }));
+  }, [netWorthSeries]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">

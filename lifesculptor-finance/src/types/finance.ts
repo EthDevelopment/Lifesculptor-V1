@@ -18,6 +18,16 @@ export type Category = {
   color?: string;
 };
 
+export type Snapshot = {
+  id: string;
+  date: string; // ISO yyyy-mm-dd
+  // Totals at that point in time (GBP)
+  bankCash?: number; // combined current/savings/cash
+  creditUsed?: number; // outstanding credit card balance (debt)
+  creditAvailable?: number; // optional, for UI only
+  investments?: number; // combined market value of investment accounts
+};
+
 export type Transaction = {
   id: string;
   type: TxnType;
