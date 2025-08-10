@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useFinanceStore } from "@/stores/useFinanceStore";
 import {
   format,
@@ -6,6 +6,7 @@ import {
   startOfMonth,
   isSameMonth,
   parseISO,
+  differenceInMonths,
 } from "date-fns";
 import {
   ResponsiveContainer,
@@ -20,6 +21,9 @@ import {
   Legend,
 } from "recharts";
 import { gbp } from "@/lib/format";
+import { COLORS } from "@/constants/colors";
+
+type RangeKey = "6m" | "12m" | "24m" | "all";
 
 export default function Dashboard() {
   const txns = useFinanceStore((s) => s.transactions);
@@ -28,16 +32,37 @@ export default function Dashboard() {
   const monthExp = useFinanceStore((s) => s.monthExpenses());
   const savingsRate = useFinanceStore((s) => s.savingsRate());
 
-  // Build monthly buckets for the last 12 months (including current)
-  const { cashflow, netWorthSeries } = useMemo(() => {
-    const months: { key: string; date: Date }[] = [];
-    const now = new Date();
-    for (let i = 11; i >= 0; i--) {
-      const d = startOfMonth(subMonths(now, i));
-      months.push({ key: format(d, "yyyy-MM"), date: d });
+  const [range, setRange] = useState<RangeKey>("12m");
+
+  const { cashflow, netWorthSeries, hasData } = useMemo(() => {
+    if (txns.length === 0)
+      return { cashflow: [], netWorthSeries: [], hasData: false };
+
+    // earliest month present in transactions
+    const earliest = txns
+      .map((t) => parseISO(t.date))
+      .sort((a, b) => +a - +b)[0];
+
+    // months to show
+    let monthsToShow = 12;
+    if (range === "6m") monthsToShow = 6;
+    if (range === "24m") monthsToShow = 24;
+    if (range === "all") {
+      monthsToShow = Math.max(
+        1,
+        differenceInMonths(new Date(), startOfMonth(earliest)) + 1
+      );
     }
 
-    // Aggregate txns into months
+    // build month buckets ending at current month
+    const months: { date: Date; label: string }[] = [];
+    const now = new Date();
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      const d = startOfMonth(subMonths(now, i));
+      months.push({ date: d, label: format(d, "MMM yy") });
+    }
+
+    // aggregate income/expense by month from transactions (historical + current)
     const cash = months.map((m) => {
       let income = 0;
       let expense = 0;
@@ -48,36 +73,31 @@ export default function Dashboard() {
           if (t.type === "expense") expense += t.amount;
         }
       }
-      return {
-        month: format(m.date, "MMM yy"),
-        income,
-        expense,
-        net: income - expense,
-      };
+      return { month: m.label, income, expense, net: income - expense };
     });
 
-    // Net worth series as cumulative sum of monthly net deltas ending at current net worth
-    // We backfill: compute cumulative delta over 12 months, then offset so last point equals netWorthNow
+    // net worth line: cumulative monthly net, offset so last point equals current net worth
     const deltas = cash.map((c) => c.net);
     const cum = deltas.reduce<number[]>((arr, d, i) => {
       const prev = i === 0 ? 0 : arr[i - 1];
       arr.push(prev + d);
       return arr;
     }, []);
-
-    // Offset so final cum matches current net worth
     const offset = netWorthNow - (cum[cum.length - 1] || 0);
     const netSeries = months.map((m, i) => ({
-      month: format(m.date, "MMM yy"),
+      month: m.label,
       netWorth: cum[i] + offset,
     }));
 
-    return { cashflow: cash, netWorthSeries: netSeries };
-  }, [txns, netWorthNow]);
+    return { cashflow: cash, netWorthSeries: netSeries, hasData: true };
+  }, [txns, netWorthNow, range]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <RangeSelector value={range} onChange={setRange} />
+      </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -90,66 +110,102 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Net worth history */}
-      <section className="rounded-lg border border-neutral-800 p-4 bg-neutral-900/40">
-        <div className="text-sm text-neutral-300 mb-2">
-          Net worth (last 12 months)
+      {!hasData ? (
+        <div className="rounded-lg border border-neutral-800 p-4 bg-neutral-900/40 text-neutral-400">
+          Add transactions with past dates to see historical charts.
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={netWorthSeries}
-              margin={{ left: 8, right: 8, top: 8, bottom: 8 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-              <XAxis dataKey="month" />
-              <YAxis tickFormatter={(v) => gbp(v)} width={80} />
-              <Tooltip
-                formatter={(value) => [gbp(value as number), "Net worth"]}
-                labelClassName="text-neutral-200"
-              />
-              <Line
-                type="monotone"
-                dataKey="netWorth"
-                dot={false}
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
+      ) : (
+        <>
+          {/* Net worth history */}
+          <section className="rounded-lg border border-neutral-800 p-4 bg-neutral-900/40">
+            <div className="text-sm text-neutral-300 mb-2">Net worth</div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={netWorthSeries}
+                  margin={{ left: 8, right: 8, top: 8, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(v) => gbp(v)} width={80} />
+                  <Tooltip
+                    formatter={(v) => [gbp(v as number), "Net worth"]}
+                    labelClassName="text-neutral-200"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="netWorth"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
 
-      {/* Cashflow bars */}
-      <section className="rounded-lg border border-neutral-800 p-4 bg-neutral-900/40">
-        <div className="text-sm text-neutral-300 mb-2">Monthly cashflow</div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={cashflow}
-              margin={{ left: 8, right: 8, top: 8, bottom: 8 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-              <XAxis dataKey="month" />
-              <YAxis tickFormatter={(v) => gbp(v)} width={80} />
-              <Legend />
-              <Tooltip
-                formatter={(value, name) => [
-                  gbp(value as number),
-                  name === "income"
-                    ? "Income"
-                    : name === "expense"
-                    ? "Expenses"
-                    : "Net",
-                ]}
-                labelClassName="text-neutral-200"
-              />
-              <Bar dataKey="income" />
-              <Bar dataKey="expense" />
-              <Bar dataKey="net" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
+          {/* Cashflow bars */}
+          <section className="rounded-lg border border-neutral-800 p-4 bg-neutral-900/40">
+            <div className="text-sm text-neutral-300 mb-2">
+              Monthly cashflow
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={cashflow}
+                  margin={{ left: 8, right: 8, top: 8, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(v) => gbp(v)} width={80} />
+                  <Legend />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      gbp(value as number),
+                      name === "income"
+                        ? "Income"
+                        : name === "expense"
+                        ? "Expenses"
+                        : "Net",
+                    ]}
+                    labelClassName="text-neutral-200"
+                  />
+                  <Bar dataKey="income" fill={COLORS.incomeGreen} />
+                  <Bar dataKey="expense" fill={COLORS.expenseRed} />
+                  <Bar dataKey="net" fill={COLORS.netWorthBlue} />
+                  {/* Same blue as net worth line */}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
+function RangeSelector({
+  value,
+  onChange,
+}: {
+  value: RangeKey;
+  onChange: (v: RangeKey) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {(["6m", "12m", "24m", "all"] as const).map((k) => (
+        <button
+          key={k}
+          onClick={() => onChange(k)}
+          className={[
+            "h-8 rounded-md px-3 text-sm border",
+            value === k
+              ? "bg-neutral-800 border-neutral-700"
+              : "bg-transparent border-neutral-800 hover:bg-neutral-900",
+          ].join(" ")}
+        >
+          {k.toUpperCase()}
+        </button>
+      ))}
     </div>
   );
 }

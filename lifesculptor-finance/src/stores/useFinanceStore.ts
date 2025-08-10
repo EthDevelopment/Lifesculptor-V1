@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { nanoid } from "nanoid";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
-import type { Account, Category, Transaction, TxnType } from "@/types/finance";
+import type { Account, Category, Transaction } from "@/types/finance";
 
 // ---------- Helpers
 const nowISO = () => new Date().toISOString();
@@ -17,7 +17,7 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat-eatingout", name: "Eating Out", kind: "expense", emoji: "🍴" },
 ];
 
-// Seed accounts (you can delete these once UI exists)
+// Seed accounts (example)
 const SEED_ACCOUNTS: Account[] = [
   {
     id: "acc-cash",
@@ -37,6 +37,13 @@ const SEED_ACCOUNTS: Account[] = [
     id: "acc-amex",
     name: "AMEX",
     type: "credit",
+    currency: "GBP",
+    createdAt: nowISO(),
+  },
+  {
+    id: "acc-invest",
+    name: "Investments",
+    type: "investment",
     currency: "GBP",
     createdAt: nowISO(),
   },
@@ -100,18 +107,16 @@ export const useFinanceStore = create<FinanceState>()(
       deleteAccount: (id) => {
         set((s) => ({
           accounts: s.accounts.filter((a) => a.id !== id),
-          transactions: s.transactions.filter((t) => t.accountId !== id),
+          transactions: s.transactions.filter(
+            (t) => t.accountId !== id && t.transferAccountId !== id
+          ),
         }));
       },
 
       // Transactions
       addTransaction: (input) => {
         const id = nanoid();
-        const txn: Transaction = {
-          ...input,
-          id,
-          createdAt: nowISO(),
-        };
+        const txn: Transaction = { ...input, id, createdAt: nowISO() };
         set((s) => ({ transactions: [txn, ...s.transactions] }));
         return id;
       },
@@ -128,26 +133,38 @@ export const useFinanceStore = create<FinanceState>()(
         }));
       },
 
-      // Derived
+      // Derived balances per account
       balanceByAccount: (accountId) => {
-        const txns = get().transactions.filter(
-          (t) => t.accountId === accountId
-        );
-        return txns.reduce((sum, t) => {
-          if (t.type === "income") return sum + t.amount;
-          if (t.type === "expense") return sum - t.amount;
-          // transfers ignored for MVP
-          return sum;
-        }, 0);
+        const txns = get().transactions;
+        let bal = 0;
+        for (const t of txns) {
+          switch (t.type) {
+            case "income":
+              if (t.accountId === accountId) bal += t.amount;
+              break;
+            case "expense":
+              if (t.accountId === accountId) bal -= t.amount;
+              break;
+            case "transfer":
+            case "invest":
+            case "debt":
+              if (t.accountId === accountId) bal -= t.amount; // FROM
+              if (t.transferAccountId === accountId) bal += t.amount; // TO
+              break;
+          }
+        }
+        return bal;
       },
+
+      // Net worth is the sum of all account balances (credit accounts will be negative if you owe)
       netWorth: () => {
         const { accounts } = get();
         return accounts.reduce(
-          (sum, a) =>
-            sum + get().balanceByAccount(a.id) * (a.type === "credit" ? -1 : 1),
+          (sum, a) => sum + get().balanceByAccount(a.id),
           0
         );
       },
+
       monthIncome: (d = new Date()) => {
         const txns = get().transactions;
         const range = { start: startOfMonth(d), end: endOfMonth(d) };
@@ -158,9 +175,12 @@ export const useFinanceStore = create<FinanceState>()(
           )
           .reduce((s, t) => s + t.amount, 0);
       },
+
       monthExpenses: (d = new Date()) => {
         const txns = get().transactions;
         const range = { start: startOfMonth(d), end: endOfMonth(d) };
+        // expenses + transfers/invest/debt that reduce cash this month count as outflow for the month-level “expenses”?
+        // For now keep “expenses” strict; cashflow chart already shows net using both.
         return txns
           .filter(
             (t) =>
@@ -168,6 +188,7 @@ export const useFinanceStore = create<FinanceState>()(
           )
           .reduce((s, t) => s + t.amount, 0);
       },
+
       savingsRate: (d = new Date()) => {
         const income = get().monthIncome(d);
         const expense = get().monthExpenses(d);
@@ -178,8 +199,7 @@ export const useFinanceStore = create<FinanceState>()(
     {
       name: "ls-finance-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
-      // migration logic can go here as we evolve the schema
+      version: 2,
     }
   )
 );

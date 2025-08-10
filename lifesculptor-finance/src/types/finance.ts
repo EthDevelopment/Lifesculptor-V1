@@ -1,5 +1,5 @@
 export type AccountType = "cash" | "bank" | "credit" | "savings" | "investment";
-export type TxnType = "income" | "expense" | "transfer";
+export type TxnType = "income" | "expense" | "transfer" | "invest" | "debt"; // invest & debt behave like transfers
 
 export type Account = {
   id: string;
@@ -21,9 +21,10 @@ export type Category = {
 export type Transaction = {
   id: string;
   type: TxnType;
-  accountId: string;
-  amount: number; // positive; sign is implied by type
-  categoryId?: string;
+  accountId: string; // FROM account (for transfer/invest/debt) or the account for income/expense
+  transferAccountId?: string; // TO account (only for transfer/invest/debt)
+  amount: number; // positive; sign implied by type
+  categoryId?: string; // (not used for transfer/invest/debt)
   note?: string;
   tags?: string[];
   date: string; // ISO

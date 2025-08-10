@@ -26,8 +26,8 @@ export default function Transactions() {
           <thead className="bg-neutral-900 text-neutral-300">
             <tr>
               <th className="text-left px-4 py-2">Date</th>
-              <th className="text-left px-4 py-2">Account</th>
-              <th className="text-left px-4 py-2">Category</th>
+              <th className="text-left px-4 py-2">From</th>
+              <th className="text-left px-4 py-2">To / Category</th>
               <th className="text-right px-4 py-2">Amount</th>
               <th className="text-left px-4 py-2">Type</th>
               <th className="text-left px-4 py-2">Note</th>
@@ -50,7 +50,13 @@ export default function Transactions() {
                     {new Date(t.date).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-2">{accountName(t.accountId)}</td>
-                  <td className="px-4 py-2">{categoryName(t.categoryId)}</td>
+                  <td className="px-4 py-2">
+                    {t.type === "transfer" ||
+                    t.type === "invest" ||
+                    t.type === "debt"
+                      ? accountName(t.transferAccountId)
+                      : categoryName(t.categoryId)}
+                  </td>
                   <td className="px-4 py-2 text-right">
                     £{t.amount.toFixed(2)}
                   </td>
@@ -73,10 +79,11 @@ function AddTransactionDrawer({ onClose }: { onClose: () => void }) {
   const accounts = useFinanceStore((s) => s.accounts);
   const categories = useFinanceStore((s) => s.categories);
 
-  const [type, setType] = useState<"income" | "expense" | "transfer">(
-    "expense"
-  );
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
+  const [type, setType] = useState<
+    "income" | "expense" | "transfer" | "invest" | "debt"
+  >("expense");
+  const [fromId, setFromId] = useState(accounts[0]?.id ?? "");
+  const [toId, setToId] = useState<string>("");
   const [categoryId, setCategoryId] = useState(
     categories.find((c) => c.kind === "expense")?.id ?? ""
   );
@@ -86,19 +93,41 @@ function AddTransactionDrawer({ onClose }: { onClose: () => void }) {
   );
   const [note, setNote] = useState<string>("");
 
+  const filteredToAccounts = accounts.filter((a) => {
+    if (a.id === fromId) return false;
+    if (type === "invest") return a.type === "investment";
+    if (type === "debt") return a.type === "credit";
+    if (type === "transfer") return true;
+    return false;
+  });
+
   const submit = () => {
     const amt = Number(amount);
-    if (!accountId || !amt || amt <= 0) return;
-    addTransaction({
+    if (!fromId || !amt || amt <= 0) return;
+
+    // Build common payload
+    const base = {
       type,
-      accountId,
+      accountId: fromId,
       amount: amt,
-      categoryId: type === "transfer" ? undefined : categoryId,
       date: new Date(date).toISOString(),
       note: note || undefined,
-    });
+    } as any;
+
+    // Transfer-like types use transferAccountId; income/expense use categoryId
+    if (type === "transfer" || type === "invest" || type === "debt") {
+      if (!toId) return;
+      addTransaction({ ...base, transferAccountId: toId });
+    } else {
+      if (!categoryId) return;
+      addTransaction({ ...base, categoryId });
+    }
+
     onClose();
   };
+
+  const isTransferish =
+    type === "transfer" || type === "invest" || type === "debt";
 
   return (
     <div className="fixed inset-0 z-20">
@@ -123,14 +152,16 @@ function AddTransactionDrawer({ onClose }: { onClose: () => void }) {
                 <option value="income">Income</option>
                 <option value="expense">Expense</option>
                 <option value="transfer">Transfer</option>
+                <option value="invest">Invest</option>
+                <option value="debt">Pay Debt</option>
               </select>
             </label>
 
             <label className="text-sm text-neutral-300">
-              Account
+              From account
               <select
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
+                value={fromId}
+                onChange={(e) => setFromId(e.target.value)}
                 className="mt-1 w-full h-9 rounded-md bg-neutral-900 border border-neutral-700 px-3 text-sm"
               >
                 {accounts.map((a) => (
@@ -142,7 +173,32 @@ function AddTransactionDrawer({ onClose }: { onClose: () => void }) {
             </label>
           </div>
 
-          {type !== "transfer" && (
+          {isTransferish ? (
+            <label className="text-sm text-neutral-300 block">
+              To account
+              <select
+                value={toId}
+                onChange={(e) => setToId(e.target.value)}
+                className="mt-1 w-full h-9 rounded-md bg-neutral-900 border border-neutral-700 px-3 text-sm"
+              >
+                <option value="" disabled>
+                  Select account
+                </option>
+                {filteredToAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-neutral-400">
+                {type === "invest"
+                  ? "Move money into an investment account."
+                  : type === "debt"
+                  ? "Pay a credit/debt account from a funding account."
+                  : "Transfer between any two accounts."}
+              </p>
+            </label>
+          ) : (
             <label className="text-sm text-neutral-300 block">
               Category
               <select
@@ -150,15 +206,15 @@ function AddTransactionDrawer({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="mt-1 w-full h-9 rounded-md bg-neutral-900 border border-neutral-700 px-3 text-sm"
               >
-                {categories
-                  .filter(
+                {[
+                  ...categories.filter(
                     (c) => c.kind === (type === "income" ? "income" : "expense")
-                  )
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  ),
+                ].map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
               </select>
             </label>
           )}
