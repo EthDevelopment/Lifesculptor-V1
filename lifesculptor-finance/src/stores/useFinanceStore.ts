@@ -98,6 +98,17 @@ type FinanceState = {
   ) => void;
   // Compute net worth at an arbitrary date using latest snapshot <= date + cashflow since
   netWorthAt: (at: Date) => number;
+
+  // Helpers for charts
+  latestSnapshotOnOrBefore: (at: Date) => Snapshot | undefined;
+  sumCashflowBetween: (
+    startExclusive: Date | null,
+    endInclusive: Date
+  ) => number; // income - expense in (start, end]
+  netWorthSeries: (
+    rangeFrom: Date,
+    rangeTo: Date
+  ) => { date: Date; value: number }[];
 };
 
 // ---------- Implementation
@@ -257,34 +268,61 @@ export const useFinanceStore = create<FinanceState>()(
       },
 
       netWorthAt: (at) => {
-        const { snapshots, transactions } = get();
+        const anchor = get().latestSnapshotOnOrBefore(at);
+        const base = anchor
+          ? (anchor.bankCash ?? 0) + (anchor.investments ?? 0) - (anchor.creditUsed ?? 0)
+          : 0;
+        const delta = get().sumCashflowBetween(anchor ? parseISO(anchor.date) : null, at);
+        return base + delta;
+      },
 
-        // 1) Find latest snapshot on/before `at`
-        const anchor = [...snapshots]
+      latestSnapshotOnOrBefore: (at) => {
+        const { snapshots } = get();
+        return [...snapshots]
           .filter((s) => !isBefore(at, parseISO(s.date)))
           .sort((a, b) => b.date.localeCompare(a.date))[0];
+      },
 
-        const base = anchor
-          ? (anchor.bankCash ?? 0) +
-            (anchor.investments ?? 0) -
-            (anchor.creditUsed ?? 0)
-          : 0;
-
-        const anchorDate = anchor ? parseISO(anchor.date) : undefined;
-
-        // 2) Add net cashflow (income - expenses) from just after anchor to `at`
-        let delta = 0;
+      // Sum of income minus expenses strictly after `startExclusive` and up to and including `endInclusive`.
+      sumCashflowBetween: (startExclusive, endInclusive) => {
+        const { transactions } = get();
+        let sum = 0;
         for (const t of transactions) {
           const d = parseISO(t.date);
-          if (anchorDate && (isBefore(d, anchorDate) || isEqual(d, anchorDate)))
-            continue;
-          if (isBefore(at, d)) continue;
-
-          if (t.type === "income") delta += t.amount;
-          else if (t.type === "expense") delta -= t.amount;
-          // transfer/invest/debt => no net worth change
+          if (startExclusive && (isBefore(d, startExclusive) || isEqual(d, startExclusive))) continue;
+          if (isBefore(endInclusive, d)) continue;
+          if (t.type === "income") sum += t.amount;
+          else if (t.type === "expense") sum -= t.amount;
+          // transfer/invest/debt do not change net worth
         }
-        return base + delta;
+        return sum;
+      },
+
+      // End-of-month net worth series across [rangeFrom, rangeTo], using snapshots + transactions.
+      netWorthSeries: (rangeFrom, rangeTo) => {
+        const pts: { date: Date; value: number }[] = [];
+
+        // Normalize to month starts
+        const start = new Date(rangeFrom.getFullYear(), rangeFrom.getMonth(), 1);
+        const end = new Date(rangeTo.getFullYear(), rangeTo.getMonth(), 1);
+
+        let cursor = start;
+        while (cursor <= end) {
+          const eom = endOfMonth(cursor);
+          const dateForPoint = eom <= rangeTo ? eom : rangeTo;
+          const value = get().netWorthAt(dateForPoint);
+          pts.push({ date: dateForPoint, value });
+          // advance one month
+          cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+        }
+
+        // Ensure we include the final day if rangeTo is not end-of-month and not already included
+        const lastPoint = pts[pts.length - 1];
+        if (!lastPoint || lastPoint.date.getTime() !== rangeTo.getTime()) {
+          pts.push({ date: rangeTo, value: get().netWorthAt(rangeTo) });
+        }
+
+        return pts;
       },
     }),
     {
