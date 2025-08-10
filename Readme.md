@@ -1,4 +1,4 @@
-0) Scope for v0.1 (MVP)
+0. Scope for v0.1 (MVP)
 
 Track personal finances locally (offline-first) with fast CRUD and clear summaries. No bank connections. Manual transactions only. Import/Export CSV. Basic forecasting (straight-line) and payoff calculators. Ship a single-page app with client-side persistence; keep a clean path to later add a backend.
 
@@ -27,3 +27,29 @@ Dark UI with the look of the Lovable preview
 Nice‑to‑haves (v0.2+)
 
 Goals tracking, scenario planner, emojis for categories, multi‑currency, recurring txns, custom reports
+
+1. Tech Stack (match Lovable)
+
+React + Vite (TypeScript)
+
+React Router (routing)
+
+Tailwind CSS for styling
+
+shadcn/ui + Radix UI components
+
+Lucide icons
+
+Zustand for client state (simple, minimal boilerplate)
+
+Zod for runtime validation of data & file imports
+
+IndexedDB via Dexie (offline-first DB) with a LocalStorage adapter fallback
+
+date-fns for date math
+
+Recharts for charts (lightweight) — swap later if needed
+
+Vitest + Testing Library for unit/ui tests
+
+Tinybird (later) if we add analytics; skip for MVP
