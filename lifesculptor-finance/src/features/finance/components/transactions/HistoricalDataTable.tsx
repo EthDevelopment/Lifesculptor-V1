@@ -1,4 +1,4 @@
-import { useFinanceStore } from "@/stores/useFinanceStore";
+import { useFinanceStore } from "@/features/finance/stores/useFinanceStore";
 import HistoricalSnapshotRow from "./HistoricalSnapshotRow";
 
 export default function HistoricalDataTable() {

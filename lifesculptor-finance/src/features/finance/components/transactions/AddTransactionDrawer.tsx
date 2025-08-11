@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useFinanceStore } from "@/stores/useFinanceStore";
+import { useFinanceStore } from "@/features/finance/stores/useFinanceStore";
 
 export default function AddTransactionDrawer({
   onClose,
