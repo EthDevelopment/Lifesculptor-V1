@@ -3,6 +3,14 @@ import Dashboard, {
   type Metric,
   type ChartBlock,
 } from "@/components/dashboard/Dashboard";
+import PageTabs from "@/components/nav/PageTabs";
+import {
+  BarChart2,
+  CreditCard,
+  PiggyBank,
+  Settings as Cog,
+} from "lucide-react";
+
 import { useFinanceStore } from "@/features/finance/stores/useFinanceStore";
 import { gbp } from "@/lib/format";
 import { COLORS } from "@/constants/colors";
@@ -28,7 +36,29 @@ import {
 
 export default function FinanceDashboard() {
   const [range, setRange] = useState<RangeKey>("12M");
-
+  const tabs = (
+    <PageTabs
+      items={[
+        { to: "/finance", label: "Overview", icon: <PiggyBank size={14} /> },
+        {
+          to: "/finance/accounts",
+          label: "Accounts",
+          icon: <CreditCard size={14} />,
+        },
+        {
+          to: "/finance/transactions",
+          label: "Transactions",
+          icon: <BarChart2 size={14} />,
+        },
+        {
+          to: "/finance/forecast",
+          label: "Forecast",
+          icon: <BarChart2 size={14} />,
+        },
+        { to: "/finance/settings", label: "Settings", icon: <Cog size={14} /> },
+      ]}
+    />
+  );
   // store selectors
   const netWorthAt = useFinanceStore((s) => s.netWorthAt);
   const monthIncome = useFinanceStore((s) => s.monthIncome());
@@ -189,6 +219,7 @@ export default function FinanceDashboard() {
       chartsTop={chartsTop}
       range={range}
       onRangeChange={setRange}
+      tabs={tabs}
     />
   );
 }

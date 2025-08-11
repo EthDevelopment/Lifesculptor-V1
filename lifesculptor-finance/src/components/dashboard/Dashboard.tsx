@@ -28,6 +28,7 @@ export default function Dashboard({
   range,
   onRangeChange,
   actionsRight,
+  tabs, // <- NEW
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -37,6 +38,7 @@ export default function Dashboard({
   range?: RangeKey;
   onRangeChange?: (v: RangeKey) => void;
   actionsRight?: ReactNode;
+  tabs?: ReactNode; // <- NEW
 }) {
   return (
     <DashboardShell
@@ -62,6 +64,9 @@ export default function Dashboard({
           />
         ))}
       </div>
+
+      {/* Page Tabs (below metrics, above charts) */}
+      {tabs ? <div className="mt-4">{tabs}</div> : null}
 
       {/* Top charts */}
       {chartsTop.length ? (
