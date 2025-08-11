@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { useFinanceStore } from "@/stores/useFinanceStore";
+import { useFinanceStore } from "@/features/finance/stores/useFinanceStore";
 import { ChevronDown, ChevronRight, Trash2, Pencil, Save } from "lucide-react";
 
 // Local inline transaction row that matches the unified table's column count (8 cols)

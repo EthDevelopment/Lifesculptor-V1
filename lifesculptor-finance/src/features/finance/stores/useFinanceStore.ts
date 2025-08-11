@@ -9,8 +9,8 @@ import {
   isBefore,
   isEqual,
 } from "date-fns";
-import type { Account, Category, Transaction } from "@/types/finance";
-import type { Snapshot } from "@/types/finance";
+import type { Account, Category, Transaction } from "@/features/finance/types/finance";
+import type { Snapshot } from "@/features/finance/types/finance";
 
 // ---------- Helpers
 const nowISO = () => new Date().toISOString();

@@ -20,7 +20,7 @@ const HealthShell = lazy(() => import("@/features/health/Shell"));
 const WorkShell = lazy(() => import("@/features/work/Shell"));
 const MindShell = lazy(() => import("@/features/mind/Shell"));
 
-import Home from "@/pages/Home";
+import Home from "@/features/finance/pages/Home";
 
 export default function App() {
   return (

@@ -1,29 +1,39 @@
 import { NavLink } from "react-router-dom";
 
 export default function Sidebar() {
-  const linkClass =
-    "block px-3 py-2 rounded-md text-sm font-medium hover:bg-neutral-800 aria-[current=page]:bg-neutral-800";
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    [
+      "block px-3 py-2 rounded-md text-sm font-medium",
+      isActive
+        ? "bg-neutral-800 text-white"
+        : "text-neutral-300 hover:bg-neutral-800 hover:text-white",
+    ].join(" ");
 
   return (
-    <aside className="w-64 border-r border-neutral-800 p-4 hidden md:block">
+    <div className="w-full">
       <div className="text-lg font-bold mb-4">LifeSculptor · Finance</div>
+
       <nav className="space-y-1">
-        <NavLink to="/" end className={linkClass}>
+        <NavLink end to="/" className={linkClass}>
+          LifeSculptor · Finance
+        </NavLink>
+        {/* Use absolute paths to avoid path-append behaviour */}
+        <NavLink end to="/finance" className={linkClass}>
           Dashboard
         </NavLink>
-        <NavLink to="/accounts" className={linkClass}>
+        <NavLink to="/finance/accounts" className={linkClass}>
           Accounts
         </NavLink>
-        <NavLink to="/transactions" className={linkClass}>
+        <NavLink to="/finance/transactions" className={linkClass}>
           Transactions
         </NavLink>
-        <NavLink to="/forecast" className={linkClass}>
+        <NavLink to="/finance/forecast" className={linkClass}>
           Forecast
         </NavLink>
-        <NavLink to="/settings" className={linkClass}>
+        <NavLink to="/finance/settings" className={linkClass}>
           Settings
         </NavLink>
       </nav>
-    </aside>
+    </div>
   );
 }
