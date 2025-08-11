@@ -1,38 +1,39 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import FeatureShell from "@/layout/FeatureShell";
+import AppSidebar from "@/layout/AppSidebar";
+
 import Dashboard from "@/features/finance/pages/Dashboard";
 import Accounts from "@/features/finance/pages/Accounts";
 import Transactions from "@/features/finance/pages/Transactions";
 import Forecast from "@/features/finance/pages/Forecast";
 import Settings from "@/features/finance/pages/Settings";
-import Sidebar from "@/layout/Sidebar";
-import Topbar from "@/layout/Topbar";
+
+import {
+  PiggyBank,
+  CreditCard,
+  BarChart2,
+  Settings as Cog,
+} from "lucide-react";
 
 export default function FinanceShell() {
-  return (
-    <div className="min-h-screen bg-neutral-950 text-white">
-      <div className="mx-auto max-w-7xl flex">
-        {/* Left nav */}
-        <aside className="hidden sm:block w-64 shrink-0 border-r border-neutral-800 bg-neutral-950/80">
-          <div className="sticky top-0 h-screen p-4">
-            <Sidebar />
-          </div>
-        </aside>
+  const items = [
+    { to: "/finance", label: "Dashboard", end: true, icon: PiggyBank },
+    { to: "/finance/accounts", label: "Accounts", icon: CreditCard },
+    { to: "/finance/transactions", label: "Transactions", icon: BarChart2 },
+    { to: "/finance/forecast", label: "Forecast", icon: BarChart2 },
+    { to: "/finance/settings", label: "Settings", icon: Cog },
+  ];
 
-        {/* Right content area */}
-        <section className="flex-1 flex min-h-screen flex-col">
-          <Topbar />
-          <div className="p-6 flex-1">
-            <Routes>
-              <Route index element={<Dashboard />} />
-              <Route path="accounts" element={<Accounts />} />
-              <Route path="transactions" element={<Transactions />} />
-              <Route path="forecast" element={<Forecast />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="*" element={<Navigate to="." replace />} />
-            </Routes>
-          </div>
-        </section>
-      </div>
-    </div>
+  return (
+    <FeatureShell sidebar={<AppSidebar title="LS - Finance" items={items} />}>
+      <Routes>
+        <Route index element={<Dashboard />} />
+        <Route path="accounts" element={<Accounts />} />
+        <Route path="transactions" element={<Transactions />} />
+        <Route path="forecast" element={<Forecast />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="*" element={<Navigate to="." replace />} />
+      </Routes>
+    </FeatureShell>
   );
 }

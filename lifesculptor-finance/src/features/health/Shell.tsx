@@ -1,30 +1,39 @@
-import { Link, Outlet, Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import FeatureShell from "@/layout/FeatureShell";
+import AppSidebar from "@/layout/AppSidebar";
+
+import { HeartPulse, Activity, Notebook, Settings as Cog } from "lucide-react";
 
 function HealthHome() {
-  return (
-    <div className="p-6">
-      <h1 className="text-xl font-semibold">Health</h1>
-      <p className="text-neutral-400 mt-1">Coming soon.</p>
-    </div>
-  );
+  return <div>Health Home</div>;
+}
+function Metrics() {
+  return <div>Metrics</div>;
+}
+function Journal() {
+  return <div>Journal</div>;
+}
+function HealthSettings() {
+  return <div>Settings</div>;
 }
 
 export default function HealthShell() {
+  const items = [
+    { to: "/health", label: "Dashboard", end: true, icon: HeartPulse },
+    { to: "/health/metrics", label: "Metrics", icon: Activity },
+    { to: "/health/journal", label: "Journal", icon: Notebook },
+    { to: "/health/settings", label: "Settings", icon: Cog },
+  ];
+
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
-      <div className="mx-auto max-w-5xl">
-        <nav className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
-          <div className="font-medium">Health</div>
-          <Link to="/" className="text-sm text-neutral-400 hover:text-white">
-            ← Home
-          </Link>
-        </nav>
-        <Routes>
-          <Route index element={<HealthHome />} />
-          <Route path="*" element={<HealthHome />} />
-        </Routes>
-        <Outlet />
-      </div>
-    </div>
+    <FeatureShell sidebar={<AppSidebar title="LS - Health" items={items} />}>
+      <Routes>
+        <Route index element={<HealthHome />} />
+        <Route path="metrics" element={<Metrics />} />
+        <Route path="journal" element={<Journal />} />
+        <Route path="settings" element={<HealthSettings />} />
+        <Route path="*" element={<Navigate to="." replace />} />
+      </Routes>
+    </FeatureShell>
   );
 }
