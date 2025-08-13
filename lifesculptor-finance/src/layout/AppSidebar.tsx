@@ -1,12 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { type ComponentType } from "react";
-import {
-  PiggyBank,
-  HeartPulse,
-  Briefcase,
-  Brain,
-  Settings as Cog,
-} from "lucide-react";
+import { PiggyBank, HeartPulse, Briefcase, Brain, Settings as Cog } from "lucide-react";
 
 export type NavItem = {
   to: string;
@@ -23,40 +17,40 @@ export default function AppSidebar({
   title: string;
   items: NavItem[];
 }) {
-  const iconClass = ({ isActive }: { isActive: boolean }) =>
+  const baseTile =
+    "block w-full h-full rounded-lg ring-1 ring-neutral-800 transition-colors flex items-center justify-center";
+
+  const tileClass = ({ isActive }: { isActive: boolean }) =>
     [
-      "flex items-center justify-center rounded-md transition-colors w-full",
+      baseTile,
       isActive
-        ? "bg-neutral-800 text-white"
-        : "bg-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white",
+        ? "bg-neutral-800 text-white ring-neutral-700"
+        : "bg-neutral-900/60 text-neutral-300 hover:bg-neutral-800 hover:text-white",
     ].join(" ");
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col p-3">
       {/* Title acts as Home */}
       <NavLink to="/" className="text-lg font-bold mb-4 text-white block">
         {title}
       </NavLink>
 
-      {/* App switcher: vertical icon rail */}
-      <div className="flex-1 flex flex-col justify-between">
-        <NavLink to="/finance" className={iconClass} title="Finance" style={{ flexGrow: 1 }}>
+      {/* Evenly distributed icon tiles */}
+      <div className="grid grid-rows-5 gap-3 flex-1">
+        <NavLink to="/finance" className={tileClass} aria-label="Finance" title="Finance">
           <PiggyBank size={28} />
         </NavLink>
-        <NavLink to="/health" className={iconClass} title="Health" style={{ flexGrow: 1 }}>
+        <NavLink to="/health" className={tileClass} aria-label="Health" title="Health">
           <HeartPulse size={28} />
+          <span className="sr-only">Health</span>
         </NavLink>
-        <NavLink to="/work" className={iconClass} title="Work" style={{ flexGrow: 1 }}>
+        <NavLink to="/work" className={tileClass} aria-label="Work" title="Work">
           <Briefcase size={28} />
         </NavLink>
-        <NavLink to="/mind" className={iconClass} title="Mind" style={{ flexGrow: 1 }}>
+        <NavLink to="/mind" className={tileClass} aria-label="Mind" title="Mind">
           <Brain size={28} />
         </NavLink>
-      </div>
-
-      {/* Global settings at bottom */}
-      <div className="pt-4 mt-auto border-t border-neutral-800">
-        <NavLink to="/settings" className={iconClass} title="Settings" style={{ width: "100%" }}>
+        <NavLink to="/settings" className={tileClass} aria-label="Settings" title="Settings">
           <Cog size={28} />
         </NavLink>
       </div>
