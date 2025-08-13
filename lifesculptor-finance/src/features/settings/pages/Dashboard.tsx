@@ -118,7 +118,7 @@ export default function SettingsDashboard() {
         { key: "Finance", label: "Finance", icon: <Brain size={14} /> },
         { key: "Health", label: "Health", icon: <Heart size={14} /> },
         { key: "Work", label: "Work", icon: <BarChart2 size={14} /> },
-        { key: "Mental", label: "Mental", icon: <Cog size={14} /> },
+        { key: "Mind", label: "Mind", icon: <Cog size={14} /> },
       ]}
     />
   );
@@ -126,9 +126,10 @@ export default function SettingsDashboard() {
   const panel =
     tab === "Finance" ? null : (
       <div className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-6 text-neutral-300">
-        {tab === "Health" && "Journal UI placeholder…"}
-        {tab === "Work" && "Settings trends coming soon…"}
-        {tab === "Mental" && "Settings ideas coming soon…"}
+        {tab === "Finance" && "Finance settings placeholder…"}
+        {tab === "Health" && "Health settings placeholder…"}
+        {tab === "Work" && "Work settings coming soon…"}
+        {tab === "Mind" && "Mind settings coming soon…"}
       </div>
     );
 
@@ -136,7 +137,7 @@ export default function SettingsDashboard() {
     <Dashboard
       title="Settings"
       metrics={metrics}
-      chartsTop={tab === "overview" ? chartsTop : undefined}
+      chartsTop={tab === "finance" ? chartsTop : undefined}
       tabs={tabs}
       range={range}
       onRangeChange={setRange}
