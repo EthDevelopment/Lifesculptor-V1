@@ -26,11 +26,11 @@ const mood = days.map((d, i) => ({
 }));
 const focus = days.map((d, i) => ({ d, pct: 55 + (i % 4) * 6 }));
 
-export default function MindDashboard() {
+export default function SettingsDashboard() {
   const [range, setRange] = useState<RangeKey>("12M");
-  const [tab, setTab] = useState<
-    "overview" | "journaling" | "trends" | "ideas" | "settings"
-  >("overview");
+  const [tab, setTab] = useState<"Finance" | "Health" | "Work" | "Mind">(
+    "Finance"
+  );
 
   const metrics: Metric[] = useMemo(
     () => [
@@ -43,7 +43,7 @@ export default function MindDashboard() {
       },
       { id: "focus", label: "Focus (avg)", value: "63%", intent: "success" },
       { id: "stress", label: "Stress", value: "3 / 10", intent: "success" },
-      { id: "sleep", label: "Mindful mins", value: "52m" },
+      { id: "sleep", label: "Settingsful mins", value: "52m" },
     ],
     []
   );
@@ -115,28 +115,26 @@ export default function MindDashboard() {
       activeKey={tab}
       onChange={(k) => setTab(k as typeof tab)}
       items={[
-        { key: "overview", label: "Overview", icon: <Brain size={14} /> },
-        { key: "journaling", label: "Journaling", icon: <Heart size={14} /> },
-        { key: "trends", label: "Trends", icon: <BarChart2 size={14} /> },
-        { key: "ideas", label: "ideas", icon: <BarChart2 size={14} /> },
-        { key: "settings", label: "Settings", icon: <Cog size={14} /> },
+        { key: "Finance", label: "Finance", icon: <Brain size={14} /> },
+        { key: "Health", label: "Health", icon: <Heart size={14} /> },
+        { key: "Work", label: "Work", icon: <BarChart2 size={14} /> },
+        { key: "Mental", label: "Mental", icon: <Cog size={14} /> },
       ]}
     />
   );
 
   const panel =
-    tab === "overview" ? null : (
+    tab === "Finance" ? null : (
       <div className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-6 text-neutral-300">
-        {tab === "journaling" && "Journal UI placeholder…"}
-        {tab === "trends" && "Mind trends coming soon…"}
-        {tab === "ideas" && "Mind ideas coming soon…"}
-        {tab === "settings" && "Mind settings coming soon…"}
+        {tab === "Health" && "Journal UI placeholder…"}
+        {tab === "Work" && "Settings trends coming soon…"}
+        {tab === "Mental" && "Settings ideas coming soon…"}
       </div>
     );
 
   return (
     <Dashboard
-      title="Mind"
+      title="Settings"
       metrics={metrics}
       chartsTop={tab === "overview" ? chartsTop : undefined}
       tabs={tabs}

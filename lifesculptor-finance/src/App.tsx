@@ -1,4 +1,3 @@
-
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
@@ -9,6 +8,7 @@ const FinanceShell = lazy(() => import("@/features/finance/Shell"));
 const HealthShell = lazy(() => import("@/features/health/Shell"));
 const WorkShell = lazy(() => import("@/features/work/Shell"));
 const MindShell = lazy(() => import("@/features/mind/Shell"));
+const SettingsShell = lazy(() => import("@/features/settings/Shell"));
 
 import Home from "@/features/finance/pages/Home";
 
@@ -22,6 +22,7 @@ export default function App() {
           <Route path="/health/*" element={<HealthShell />} />
           <Route path="/work/*" element={<WorkShell />} />
           <Route path="/mind/*" element={<MindShell />} />
+          <Route path="/settings/*" element={<SettingsShell />} />
           {/* safety: unknown → home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
