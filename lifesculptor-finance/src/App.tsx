@@ -1,13 +1,3 @@
-// import { BrowserRouter } from "react-router-dom";
-// import Shell from "@/features/finance/Shell";
-
-// export default function App() {
-//   return (
-//     <BrowserRouter>
-//       <Shell />
-//     </BrowserRouter>
-//   );
-// }
 
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";

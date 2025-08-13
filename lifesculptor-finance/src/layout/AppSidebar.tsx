@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { type ComponentType } from "react";
-import { PiggyBank, HeartPulse, Briefcase, Brain } from "lucide-react";
+import { PiggyBank, HeartPulse, Briefcase, Brain, Settings as Cog } from "lucide-react";
 
 export type NavItem = {
   to: string;
@@ -11,91 +11,49 @@ export type NavItem = {
 
 export default function AppSidebar({
   title,
-  items,
+  // keep items for backward-compat but unused now
+  items: _items,
 }: {
   title: string;
   items: NavItem[];
 }) {
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
+  const baseTile =
+    "block w-full h-full rounded-lg ring-1 ring-neutral-800 transition-colors flex items-center justify-center";
+
+  const tileClass = ({ isActive }: { isActive: boolean }) =>
     [
-      "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+      baseTile,
       isActive
-        ? "bg-neutral-800 text-white"
-        : "text-neutral-300 hover:bg-neutral-800 hover:text-white",
+        ? "bg-neutral-800 text-white ring-neutral-700"
+        : "bg-neutral-900/60 text-neutral-300 hover:bg-neutral-800 hover:text-white",
     ].join(" ");
 
   return (
-    <div className="w-full">
+    <div className="h-full flex flex-col p-3">
+      {/* Title acts as Home */}
       <NavLink to="/" className="text-lg font-bold mb-4 text-white block">
         {title}
       </NavLink>
-      {/* Quick navigation icons */}
-      <div className="flex items-center gap-2 mb-5">
-        <NavLink
-          to="/finance"
-          className={({ isActive }) =>
-            [
-              "w-8 h-8 flex items-center justify-center rounded-md transition-colors",
-              isActive
-                ? "bg-neutral-800 text-white"
-                : "bg-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white",
-            ].join(" ")
-          }
-          title="Finance"
-        >
-          <PiggyBank size={18} />
+
+      {/* Evenly distributed icon tiles */}
+      <div className="grid grid-rows-5 gap-3 flex-1">
+        <NavLink to="/finance" className={tileClass} aria-label="Finance" title="Finance">
+          <PiggyBank size={28} />
         </NavLink>
-        <NavLink
-          to="/health"
-          className={({ isActive }) =>
-            [
-              "w-8 h-8 flex items-center justify-center rounded-md transition-colors",
-              isActive
-                ? "bg-neutral-800 text-white"
-                : "bg-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white",
-            ].join(" ")
-          }
-          title="Health"
-        >
-          <HeartPulse size={18} />
+        <NavLink to="/health" className={tileClass} aria-label="Health" title="Health">
+          <HeartPulse size={28} />
+          <span className="sr-only">Health</span>
         </NavLink>
-        <NavLink
-          to="/work"
-          className={({ isActive }) =>
-            [
-              "w-8 h-8 flex items-center justify-center rounded-md transition-colors",
-              isActive
-                ? "bg-neutral-800 text-white"
-                : "bg-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white",
-            ].join(" ")
-          }
-          title="Work"
-        >
-          <Briefcase size={18} />
+        <NavLink to="/work" className={tileClass} aria-label="Work" title="Work">
+          <Briefcase size={28} />
         </NavLink>
-        <NavLink
-          to="/mind"
-          className={({ isActive }) =>
-            [
-              "w-8 h-8 flex items-center justify-center rounded-md transition-colors",
-              isActive
-                ? "bg-neutral-800 text-white"
-                : "bg-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white",
-            ].join(" ")
-          }
-          title="Mind"
-        >
-          <Brain size={18} />
+        <NavLink to="/mind" className={tileClass} aria-label="Mind" title="Mind">
+          <Brain size={28} />
+        </NavLink>
+        <NavLink to="/settings" className={tileClass} aria-label="Settings" title="Settings">
+          <Cog size={28} />
         </NavLink>
       </div>
-      <nav className="space-y-1">
-        {items.map(({ to, label, end, icon: Icon }) => (
-          <NavLink key={to} to={to} end={end} className={linkClass}>
-            {Icon ? <Icon size={16} /> : null}
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
     </div>
   );
 }

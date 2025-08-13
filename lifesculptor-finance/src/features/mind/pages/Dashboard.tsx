@@ -1,0 +1,149 @@
+import { useMemo, useState } from "react";
+import Dashboard, {
+  type Metric,
+  type ChartBlock,
+} from "@/components/dashboard/Dashboard";
+import PageTabs from "@/components/nav/PageTabs";
+import { Brain, Heart, BarChart2, Settings as Cog } from "lucide-react";
+import type { RangeKey } from "@/components/dashboard/RangeTabs";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  AreaChart,
+  Area,
+} from "recharts";
+import { COLORS } from "@/constants/colors";
+
+const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const mood = days.map((d, i) => ({
+  d,
+  score: 5 + Math.round(2 * Math.sin(i / 1.5)),
+}));
+const focus = days.map((d, i) => ({ d, pct: 55 + (i % 4) * 6 }));
+
+export default function MindDashboard() {
+  const [range, setRange] = useState<RangeKey>("12M");
+  const [tab, setTab] = useState<
+    "overview" | "journaling" | "trends" | "trends" | "settings"
+  >("overview");
+
+  const metrics: Metric[] = useMemo(
+    () => [
+      {
+        id: "mood",
+        label: "Mood (avg)",
+        value: "7.2 / 10",
+        intent: "success",
+        deltaPct: 1.4,
+      },
+      { id: "focus", label: "Focus (avg)", value: "63%", intent: "success" },
+      { id: "stress", label: "Stress", value: "3 / 10", intent: "success" },
+      { id: "sleep", label: "Mindful mins", value: "52m" },
+    ],
+    []
+  );
+
+  const chartsTop: ChartBlock[] = [
+    {
+      id: "mood-line",
+      title: "Mood by day",
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={mood}
+            margin={{ left: 8, right: 8, top: 8, bottom: 8 }}
+          >
+            <CartesianGrid stroke="#262626" vertical={false} />
+            <XAxis dataKey="d" tick={{ fill: "#9ca3af", fontSize: 12 }} />
+            <YAxis tick={{ fill: "#9ca3af", fontSize: 12 }} />
+            <Tooltip
+              contentStyle={{
+                background: "#0b0b0b",
+                border: "1px solid #2a2a2a",
+                borderRadius: 8,
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="score"
+              stroke={COLORS.netWorthBlue}
+              strokeWidth={2.2}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      ),
+    },
+    {
+      id: "focus-area",
+      title: "Focused time (%)",
+      render: () => (
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={focus}
+            margin={{ left: 8, right: 8, top: 8, bottom: 8 }}
+          >
+            <CartesianGrid stroke="#262626" vertical={false} />
+            <XAxis dataKey="d" tick={{ fill: "#9ca3af", fontSize: 12 }} />
+            <YAxis tick={{ fill: "#9ca3af", fontSize: 12 }} />
+            <Tooltip
+              contentStyle={{
+                background: "#0b0b0b",
+                border: "1px solid #2a2a2a",
+                borderRadius: 8,
+              }}
+            />
+            <Area
+              dataKey="pct"
+              stroke={COLORS.incomeGreen}
+              fill={COLORS.incomeGreen}
+              fillOpacity={0.25}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      ),
+    },
+  ];
+
+  const tabs = (
+    <PageTabs
+      activeKey={tab}
+      onChange={(k) => setTab(k as typeof tab)}
+      items={[
+        { key: "overview", label: "Overview", icon: <Brain size={14} /> },
+        { key: "journaling", label: "Journaling", icon: <Heart size={14} /> },
+        { key: "trends", label: "Trends", icon: <BarChart2 size={14} /> },
+        { key: "ideas", label: "ideas", icon: <BarChart2 size={14} /> },
+        { key: "settings", label: "Settings", icon: <Cog size={14} /> },
+      ]}
+    />
+  );
+
+  const panel =
+    tab === "overview" ? null : (
+      <div className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-6 text-neutral-300">
+        {tab === "journaling" && "Journal UI placeholder…"}
+        {tab === "trends" && "Mind trends coming soon…"}
+        {tab === "ideas" && "Mind ideas coming soon…"}
+        {tab === "settings" && "Mind settings coming soon…"}
+      </div>
+    );
+
+  return (
+    <Dashboard
+      title="Mind"
+      metrics={metrics}
+      chartsTop={tab === "overview" ? chartsTop : undefined}
+      tabs={tabs}
+      range={range}
+      onRangeChange={setRange}
+    >
+      {panel}
+    </Dashboard>
+  );
+}
