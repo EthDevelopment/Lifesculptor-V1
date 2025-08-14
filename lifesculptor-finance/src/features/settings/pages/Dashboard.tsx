@@ -4,7 +4,13 @@ import Dashboard, {
   type ChartBlock,
 } from "@/components/dashboard/Dashboard";
 import PageTabs from "@/components/nav/PageTabs";
-import { Brain, Heart, BarChart2, Settings as Cog } from "lucide-react";
+import {
+  Banknote,
+  Brain,
+  Heart,
+  BarChart2,
+  Settings as Cog,
+} from "lucide-react";
 import type { RangeKey } from "@/components/dashboard/RangeTabs";
 import {
   ResponsiveContainer,
@@ -28,9 +34,9 @@ const focus = days.map((d, i) => ({ d, pct: 55 + (i % 4) * 6 }));
 
 export default function SettingsDashboard() {
   const [range, setRange] = useState<RangeKey>("12M");
-  const [tab, setTab] = useState<"Finance" | "Health" | "Work" | "Mind">(
-    "Finance"
-  );
+  const [tab, setTab] = useState<
+    "Finance" | "Health" | "Work" | "Mind" | "Account"
+  >("Finance");
 
   const metrics: Metric[] = useMemo(
     () => [
@@ -115,10 +121,11 @@ export default function SettingsDashboard() {
       activeKey={tab}
       onChange={(k) => setTab(k as typeof tab)}
       items={[
-        { key: "Finance", label: "Finance", icon: <Brain size={14} /> },
+        { key: "Finance", label: "Finance", icon: <Banknote size={14} /> },
         { key: "Health", label: "Health", icon: <Heart size={14} /> },
         { key: "Work", label: "Work", icon: <BarChart2 size={14} /> },
-        { key: "Mind", label: "Mind", icon: <Cog size={14} /> },
+        { key: "Mind", label: "Mind", icon: <Brain size={14} /> },
+        { key: "Account", label: "Account", icon: <Cog size={14} /> },
       ]}
     />
   );
@@ -126,10 +133,10 @@ export default function SettingsDashboard() {
   const panel =
     tab === "Finance" ? null : (
       <div className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-6 text-neutral-300">
-        {tab === "Finance" && "Finance settings placeholder…"}
         {tab === "Health" && "Health settings placeholder…"}
         {tab === "Work" && "Work settings coming soon…"}
         {tab === "Mind" && "Mind settings coming soon…"}
+        {tab === "Account" && "Account settings coming soon…"}
       </div>
     );
 
@@ -137,7 +144,7 @@ export default function SettingsDashboard() {
     <Dashboard
       title="Settings"
       metrics={metrics}
-      chartsTop={tab === "finance" ? chartsTop : undefined}
+      chartsTop={tab === "Finance" ? chartsTop : undefined}
       tabs={tabs}
       range={range}
       onRangeChange={setRange}
