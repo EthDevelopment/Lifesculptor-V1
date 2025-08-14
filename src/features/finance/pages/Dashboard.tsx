@@ -69,69 +69,6 @@ function AccountsPanel() {
   );
 }
 
-function TransactionsPanel() {
-  const txns = useFinanceStore((s) => s.transactions).slice(0, 10);
-  const accounts = useFinanceStore((s) => s.accounts);
-  const categories = useFinanceStore((s) => s.categories);
-
-  const nameOf = (id?: string, kind?: "account" | "category") => {
-    if (!id) return "—";
-    if (kind === "account")
-      return accounts.find((a) => a.id === id)?.name ?? "—";
-    return categories.find((c) => c.id === id)?.name ?? "—";
-  };
-
-  return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-950/60">
-      <div className="border-b border-neutral-800 p-3 text-sm text-neutral-300">
-        Recent Transactions
-      </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="text-neutral-400">
-            <tr>
-              <th className="px-3 py-2 text-left">Date</th>
-              <th className="px-3 py-2 text-left">From</th>
-              <th className="px-3 py-2 text-left">To / Category</th>
-              <th className="px-3 py-2 text-right">Amount</th>
-              <th className="px-3 py-2 text-left">Type</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-800">
-            {txns.map((t) => (
-              <tr key={t.id} className="hover:bg-neutral-900/40">
-                <td className="px-3 py-2">
-                  {new Date(t.date).toLocaleDateString()}
-                </td>
-                <td className="px-3 py-2">{nameOf(t.accountId, "account")}</td>
-                <td className="px-3 py-2">
-                  {t.transferAccountId
-                    ? nameOf(t.transferAccountId, "account")
-                    : nameOf(t.categoryId, "category")}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {gbp(t.amount)}
-                </td>
-                <td className="px-3 py-2 capitalize">{t.type}</td>
-              </tr>
-            ))}
-            {txns.length === 0 ? (
-              <tr>
-                <td
-                  className="px-3 py-6 text-center text-neutral-500"
-                  colSpan={5}
-                >
-                  No transactions yet.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function ForecastPanel() {
   // placeholder—for now just a friendly box you can replace with your real forecast
   return (

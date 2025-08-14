@@ -4,13 +4,7 @@ import Dashboard, {
   type ChartBlock,
 } from "@/components/dashboard/Dashboard";
 import PageTabs from "@/components/nav/PageTabs";
-import {
-  Dumbbell,
-  Apple,
-  ScanEye,
-  HeartPulse,
-  Settings as Cog,
-} from "lucide-react";
+import { Dumbbell, Apple, ScanEye, HeartPulse } from "lucide-react";
 import type { RangeKey } from "@/components/dashboard/RangeTabs";
 import {
   ResponsiveContainer,

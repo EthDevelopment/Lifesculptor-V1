@@ -4,7 +4,7 @@ import AppSidebar from "@/layout/AppSidebar";
 
 import Dashboard from "@/features/health/pages/Dashboard";
 
-import { Activity, HeartPulse, BarChart2, Settings as Cog } from "lucide-react";
+import { Activity, HeartPulse, BarChart2 } from "lucide-react";
 
 function Placeholder() {
   return <div>Coming Soon</div>;
