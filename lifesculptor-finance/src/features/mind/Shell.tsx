@@ -15,7 +15,7 @@ export default function MindShell() {
     { to: "/mind", label: "Dashboard", end: true, icon: Brain },
     { to: "/mind/ideas", label: "Ideas", icon: Lightbulb },
     { to: "/mind/trends", label: "Trends", icon: BarChart2 },
-    { to: "/mind/settings", label: "Settings", icon: Cog },
+    { to: "/settings", label: "Settings", icon: Cog },
   ];
 
   return (
