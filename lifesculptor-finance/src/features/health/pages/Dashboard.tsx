@@ -4,7 +4,13 @@ import Dashboard, {
   type ChartBlock,
 } from "@/components/dashboard/Dashboard";
 import PageTabs from "@/components/nav/PageTabs";
-import { Activity, HeartPulse, BarChart2, Settings as Cog } from "lucide-react";
+import {
+  Dumbbell,
+  Apple,
+  ScanEye,
+  HeartPulse,
+  Settings as Cog,
+} from "lucide-react";
 import type { RangeKey } from "@/components/dashboard/RangeTabs";
 import {
   ResponsiveContainer,
@@ -32,7 +38,7 @@ const workoutBars = WEEKS.map((w, i) => ({
 export default function HealthDashboard() {
   const [range, setRange] = useState<RangeKey>("12M");
   const [tab, setTab] = useState<
-    "overview" | "insights" | "trends" | "settings"
+    "overview" | "workouts" | "nutrition" | "insights"
   >("overview");
 
   const metrics: Metric[] = useMemo(
@@ -118,10 +124,10 @@ export default function HealthDashboard() {
       activeKey={tab}
       onChange={(k) => setTab(k as typeof tab)}
       items={[
-        { key: "overview", label: "Overview", icon: <Activity size={14} /> },
-        { key: "insights", label: "Insights", icon: <HeartPulse size={14} /> },
-        { key: "trends", label: "Trends", icon: <BarChart2 size={14} /> },
-        { key: "settings", label: "Settings", icon: <Cog size={14} /> },
+        { key: "overview", label: "Overview", icon: <HeartPulse size={14} /> },
+        { key: "workouts", label: "workouts", icon: <Dumbbell size={14} /> },
+        { key: "nutrition", label: "nutrition", icon: <Apple size={14} /> },
+        { key: "insights", label: "insights", icon: <ScanEye size={14} /> },
       ]}
     />
   );
@@ -129,9 +135,9 @@ export default function HealthDashboard() {
   const tabContent =
     tab === "overview" ? null : (
       <div className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-6 text-neutral-300">
-        {tab === "insights" && "Health insights coming soon…"}
-        {tab === "trends" && "Trend analysis coming soon…"}
-        {tab === "settings" && "Health settings coming soon…"}
+        {tab === "workouts" && "Health insights coming soon…"}
+        {tab === "nutrition" && "Trend analysis coming soon…"}
+        {tab === "insights" && "Health settings coming soon…"}
       </div>
     );
 
