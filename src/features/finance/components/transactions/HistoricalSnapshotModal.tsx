@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { useFinanceStore } from "@/features/finance/stores/useFinanceStore";
+import { useFinanceStore } from "@/domains/finance/store";
 
 export default function HistoricalSnapshotModal({
   onClose,
