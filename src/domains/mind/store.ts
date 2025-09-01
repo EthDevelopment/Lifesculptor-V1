@@ -6,7 +6,7 @@ import type { MindState, JournalEntry, Idea } from "./types";
 
 export const useMindStore = create<MindState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // --- initial state
       journal: {},
       ideas: {},
