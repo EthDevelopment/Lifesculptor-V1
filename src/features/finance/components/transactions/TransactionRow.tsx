@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useFinanceStore } from "@/features/finance/stores/useFinanceStore";
+import { useFinanceStore } from "@/domains/finance/store";
 import { Pencil, Save, Trash2 } from "lucide-react";
 
 type Transferish = "transfer" | "invest" | "debt";

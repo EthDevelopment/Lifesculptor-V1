@@ -11,7 +11,7 @@ import {
   Settings as Cog,
 } from "lucide-react";
 
-import { useFinanceStore } from "@/features/finance/stores/useFinanceStore";
+import { useFinanceStore } from "@/domains/finance/store";
 import { gbp } from "@/lib/format";
 import { COLORS } from "@/constants/colors";
 import {
