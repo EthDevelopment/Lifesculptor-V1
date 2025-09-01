@@ -14,6 +14,14 @@ export type Idea = {
   updatedAt: number; // epoch ms
 };
 
+export type Pomodoro = {
+  id?: string;
+  title?: string;
+  duration: Int16Array;
+  date: number;
+  result?: string;
+}
+
 export type MindState = {
   // Journaling
   journal: Record<string, JournalEntry>;
@@ -29,3 +37,5 @@ export type MindState = {
   ) => void;
   deleteIdea: (id: string) => void;
 };
+
+

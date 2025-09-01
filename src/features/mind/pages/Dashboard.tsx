@@ -4,7 +4,7 @@ import Dashboard, {
   type ChartBlock,
 } from "@/components/dashboard/Dashboard";
 import PageTabs from "@/components/nav/PageTabs";
-import { Brain, Heart, BarChart2, Settings as Cog } from "lucide-react";
+import { Brain, Heart, BarChart2, Focus, Settings as Cog } from "lucide-react";
 import type { RangeKey } from "@/components/dashboard/RangeTabs";
 import {
   ResponsiveContainer,
@@ -30,7 +30,7 @@ const focus = days.map((d, i) => ({ d, pct: 55 + (i % 4) * 6 }));
 export default function MindDashboard() {
   const [range, setRange] = useState<RangeKey>("12M");
   const [tab, setTab] = useState<
-    "overview" | "journaling" | "trends" | "ideas" | "settings"
+    "overview" | "journaling" | "ideas" | "focus" | "settings"
   >("overview");
 
   const metrics: Metric[] = useMemo(
@@ -118,8 +118,8 @@ export default function MindDashboard() {
       items={[
         { key: "overview", label: "Overview", icon: <Brain size={14} /> },
         { key: "journaling", label: "Journaling", icon: <Heart size={14} /> },
-        { key: "trends", label: "Trends", icon: <BarChart2 size={14} /> },
-        { key: "ideas", label: "ideas", icon: <BarChart2 size={14} /> },
+        { key: "ideas", label: "Ideas", icon: <BarChart2 size={14} /> },
+        { key: "focus", label: "Focus", icon: <Focus size={14} /> },
         { key: "settings", label: "Settings", icon: <Cog size={14} /> },
       ]}
     />
@@ -132,9 +132,10 @@ export default function MindDashboard() {
           <JournalPanel />
         ) : tab === "ideas" ? (
           <IdeasPanel />
+        ) : tab === "focus" ? (
+          <IdeasPanel />
         ) : (
           <div className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-6 text-neutral-300">
-            {tab === "trends" && "Mind trends coming soon…"}
             {tab === "settings" && "Mind settings coming soon…"}
           </div>
         )}
