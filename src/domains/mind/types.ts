@@ -1,23 +1,23 @@
 // src/domains/mind/types.ts
 
 export type JournalEntry = {
-  /** ISO date 'YYYY-MM-DD' used as the key */
-  date: string;
+  id: string; // unique id
+  date: string; // YYYY-MM-DD (local)
   body: string;
+  mood?: number; // 1-10
+  createdAt: number; // epoch ms
   updatedAt: number; // epoch ms
 };
 
 export type Idea = {
   id: string;
-  title: string; // one-liner, e.g., "a hat for cats"
+  title: string; // one-liner
   details?: string; // optional expanded text
   createdAt: number; // epoch ms
   updatedAt: number; // epoch ms
 };
 
-/**
- * Focus / Pomodoro types
- */
+/** Focus / Pomodoro */
 export type FocusPhase = "work" | "break";
 
 export type FocusConfig = {
@@ -27,7 +27,6 @@ export type FocusConfig = {
   breakMinutes: number; // each break duration in minutes
 };
 
-// Live, in-progress focus session (not persisted in history yet)
 export type FocusRuntime = {
   id: string;
   config: FocusConfig;
@@ -40,7 +39,6 @@ export type FocusRuntime = {
   isPaused: boolean;
 };
 
-// Completed historical focus session
 export type FocusSession = {
   id: string;
   label: string;
@@ -52,10 +50,17 @@ export type FocusSession = {
 };
 
 export type MindState = {
-  // Journaling
-  journal: Record<string, JournalEntry>;
-  upsertJournal: (date: string, body: string) => void;
-  removeJournal: (date: string) => void;
+  // Journaling (multi-entry per day)
+  journal: Record<string, JournalEntry>; // keyed by entry id
+  addJournalEntry: (date: string, body: string, mood?: number) => string;
+  updateJournalEntry: (
+    id: string,
+    patch: Partial<Pick<JournalEntry, "body" | "mood" | "date">>
+  ) => void;
+  removeJournalEntry: (id: string) => void;
+  // Back-compat helpers
+  upsertJournal: (date: string, body: string) => void; // adds a new entry
+  removeJournal: (date: string) => void; // removes all entries for date
 
   // Ideas
   ideas: Record<string, Idea>;

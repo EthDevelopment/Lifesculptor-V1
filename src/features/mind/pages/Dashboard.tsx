@@ -23,6 +23,7 @@ import { COLORS } from "@/constants/colors";
 import FocusPanel from "@/features/mind/components/FocusPanel";
 import IdeasPanel from "@/features/mind/components/IdeasPanel";
 import JournalPanel from "@/features/mind/components/JournalPanel";
+import MindSettingsPanel from "@/features/mind/components/MindSettingsPanel";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const mood = days.map((d, i) => ({
@@ -138,11 +139,9 @@ export default function MindDashboard() {
           <IdeasPanel />
         ) : tab === "focus" ? (
           <FocusPanel />
-        ) : (
-          <div className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-6 text-neutral-300">
-            {tab === "settings" && "Mind settings coming soon…"}
-          </div>
-        )}
+        ) : tab === "settings" ? (
+          <MindSettingsPanel />
+        ) : null}
       </>
     );
 

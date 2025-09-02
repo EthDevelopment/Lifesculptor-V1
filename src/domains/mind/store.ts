@@ -13,31 +13,68 @@ import type {
 
 export const useMindStore = create<MindState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // --- initial state
-      journal: {},
+      journal: {}, // keyed by entry id
       ideas: {},
 
       // --- focus
       focusSessions: {},
       activeFocus: undefined,
 
-      // --- journaling
-      upsertJournal: (date: string, body: string) => {
+      // --- journaling (multi-entry per day)
+      addJournalEntry: (date: string, body: string, mood?: number) => {
+        const id = nanoid();
+        const now = Date.now();
         const entry: JournalEntry = {
+          id,
           date,
           body,
-          updatedAt: Date.now(),
+          mood,
+          createdAt: now,
+          updatedAt: now,
         };
-        set((state) => ({
-          journal: { ...state.journal, [date]: entry },
-        }));
+        set((state) => ({ journal: { ...state.journal, [id]: entry } }));
+        return id;
+      },
+
+      updateJournalEntry: (id, patch) => {
+        set((state) => {
+          const existing = state.journal[id];
+          if (!existing) return state;
+          const next: JournalEntry = {
+            ...existing,
+            ...patch,
+            body: patch.body !== undefined ? patch.body : existing.body,
+            mood: patch.mood !== undefined ? patch.mood : existing.mood,
+            date: patch.date !== undefined ? patch.date : existing.date,
+            updatedAt: Date.now(),
+          };
+          return { journal: { ...state.journal, [id]: next } };
+        });
+      },
+
+      removeJournalEntry: (id) => {
+        set((state) => {
+          if (!state.journal[id]) return state;
+          const next = { ...state.journal };
+          delete next[id];
+          return { journal: next };
+        });
+      },
+
+      // --- journaling (back-compat wrappers)
+      upsertJournal: (date: string, body: string) => {
+        // In the new model, "upsert" just adds a new entry for the date.
+        get().addJournalEntry(date, body);
       },
 
       removeJournal: (date: string) => {
         set((state) => {
           const next = { ...state.journal };
-          delete next[date];
+          for (const [id, e] of Object.entries(state.journal)) {
+            if (e.date === date) delete next[id];
+          }
           return { journal: next };
         });
       },
@@ -53,16 +90,14 @@ export const useMindStore = create<MindState>()(
           createdAt: now,
           updatedAt: now,
         };
-        set((state) => ({
-          ideas: { ...state.ideas, [id]: idea },
-        }));
+        set((state) => ({ ideas: { ...state.ideas, [id]: idea } }));
         return id;
       },
 
       updateIdea: (id, patch) => {
         set((state) => {
           const existing = state.ideas[id];
-          if (!existing) return { ideas: state.ideas };
+          if (!existing) return { ideas: state.ideas } as any;
           const next: Idea = {
             ...existing,
             ...patch,
@@ -138,7 +173,6 @@ export const useMindStore = create<MindState>()(
           let phase = rt.phase;
           let phaseEndsAt = rt.phaseEndsAt;
 
-          // advance counters within current phase
           const delta = secondsElapsed - rt.secondsElapsed;
           if (phase === "work") {
             secondsWorked = Math.min(secondsWorked + delta, totalSeconds);
@@ -146,20 +180,17 @@ export const useMindStore = create<MindState>()(
             secondsOnBreak = Math.min(secondsOnBreak + delta, totalSeconds);
           }
 
-          // handle phase transitions (supports large ticks)
           while (
             secondsElapsed >= phaseEndsAt &&
             secondsElapsed < totalSeconds
           ) {
             if (phase === "work") {
-              // switch to break
               phase = "break";
               phaseEndsAt = Math.min(
                 phaseEndsAt + rt.config.breakMinutes * 60,
                 totalSeconds
               );
             } else {
-              // switch back to work; next work block ends at current time + breakEvery
               phase = "work";
               phaseEndsAt = Math.min(
                 phaseEndsAt + rt.config.breakEvery * 60,
@@ -223,9 +254,34 @@ export const useMindStore = create<MindState>()(
       },
     }),
     {
-      name: "ls-mind", // keep version at 1 to avoid migrate warnings
+      name: "ls-mind",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
+      migrate: (persisted, from) => {
+        // v1 -> v2 migration: convert single-entry-per-day journal to multi-entry (by id)
+        if (from < 2 && persisted && typeof persisted === "object") {
+          const anyObj: any = persisted;
+          const old = anyObj.state?.journal || anyObj.journal;
+          if (old && typeof old === "object" && !Array.isArray(old)) {
+            const now = Date.now();
+            const journal: Record<string, JournalEntry> = {};
+            for (const [key, val] of Object.entries<any>(old)) {
+              const id = nanoid();
+              journal[id] = {
+                id,
+                date: (val as any)?.date || (key as string),
+                body: (val as any)?.body || "",
+                mood: undefined,
+                createdAt: (val as any)?.updatedAt || now,
+                updatedAt: (val as any)?.updatedAt || now,
+              };
+            }
+            if (anyObj.state) anyObj.state.journal = journal;
+            else anyObj.journal = journal;
+          }
+        }
+        return persisted as any;
+      },
     }
   )
 );
