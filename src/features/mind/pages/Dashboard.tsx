@@ -7,18 +7,6 @@ import Dashboard, {
 import PageTabs from "@/components/nav/PageTabs";
 import { Brain, Heart, BarChart2, Focus, Settings as Cog } from "lucide-react";
 import type { RangeKey } from "@/components/dashboard/RangeTabs";
-import {
-  ResponsiveContainer,
-  CartesianGrid,
-  Tooltip,
-  XAxis,
-  YAxis,
-  AreaChart,
-  Area,
-  ComposedChart,
-  Line,
-} from "recharts";
-import { COLORS } from "@/constants/colors";
 import { useMindStore } from "@/domains/mind/store";
 
 // Panels
@@ -26,9 +14,11 @@ import FocusPanel from "@/features/mind/components/FocusPanel";
 import IdeasPanel from "@/features/mind/components/IdeasPanel";
 import JournalPanel from "@/features/mind/components/JournalPanel";
 import MindSettingsPanel from "@/features/mind/components/MindSettingsPanel";
+import MoodChart from "@/features/mind/components/charts/MoodChart";
+import FocusChart from "@/features/mind/components/charts/FocusChart";
 
 // Sleek tooltip
-function MindTooltip({ label, payload }: any) {
+export function MindTooltip({ label, payload }: any) {
   const items = Array.isArray(payload)
     ? payload.filter((p) => p && p.value != null)
     : [];
@@ -77,7 +67,7 @@ function MindTooltip({ label, payload }: any) {
   );
 }
 
-const axisStyle = {
+export const axisStyle = {
   tick: { fill: "#9ca3af", fontSize: 12 },
   axisLine: false,
   tickLine: false,
@@ -143,25 +133,19 @@ export default function MindDashboard() {
     "overview" | "journaling" | "ideas" | "focus" | "settings"
   >("overview");
 
-  // ---- Pull state
   const journal = useMindStore((s) => s.journal);
   const focusSessions = useMindStore((s) => s.focusSessions);
 
-  // ---- Helpers
-  // (removed toKey and labelFor as per instructions)
-
-  // ---- Aggregate for Overview based on selected range
   const { focusSeries, moodLineSeries, moodAvg, focusTotalMin } =
     useMemo(() => {
       const { start, end } = getRangeWindow(range, journal, focusSessions);
 
-      // group journal by day -> { count, avgMood }
       const jByDay = new Map<
         string,
         { count: number; moodSum: number; moodCount: number }
       >();
       for (const e of Object.values(journal)) {
-        const d = e.date; // YYYY-MM-DD
+        const d = e.date;
         const ts = new Date(d + "T00:00:00").getTime();
         if (ts < start.getTime() || ts > end.getTime()) continue;
         const cell = jByDay.get(d) ?? { count: 0, moodSum: 0, moodCount: 0 };
@@ -173,7 +157,6 @@ export default function MindDashboard() {
         jByDay.set(d, cell);
       }
 
-      // group focus worked minutes by day
       const fByDay = new Map<string, number>();
       for (const s of Object.values(focusSessions)) {
         const day = new Date(s.startedAt);
@@ -223,31 +206,24 @@ export default function MindDashboard() {
         seriesF.push({ key, label, minutes });
       }
 
-      // build continuous mood line with linear interpolation between known points
       const moodLineSeries = seriesJ.map((pt) => ({
         key: pt.key,
         label: pt.label,
-        mood: pt.mood as number | null,
+        mood: pt.mood,
       }));
-
-      // collect indices with real data
       const idx: number[] = [];
       for (let i = 0; i < moodLineSeries.length; i++) {
         if (typeof moodLineSeries[i].mood === "number") idx.push(i);
       }
 
       if (idx.length === 0) {
-        // no data at all -> flat neutral 5
         for (let i = 0; i < moodLineSeries.length; i++)
           moodLineSeries[i].mood = 5;
       } else {
-        // extend edges with nearest value
         for (let i = 0; i < idx[0]; i++)
           moodLineSeries[i].mood = moodLineSeries[idx[0]].mood!;
         for (let i = idx[idx.length - 1] + 1; i < moodLineSeries.length; i++)
           moodLineSeries[i].mood = moodLineSeries[idx[idx.length - 1]].mood!;
-
-        // interpolate segments between known points
         for (let k = 0; k < idx.length - 1; k++) {
           const a = idx[k];
           const b = idx[k + 1];
@@ -255,7 +231,7 @@ export default function MindDashboard() {
           const mB = moodLineSeries[b].mood!;
           const span = b - a;
           for (let i = a + 1; i < b; i++) {
-            const t = (i - a) / span; // 0..1
+            const t = (i - a) / span;
             moodLineSeries[i].mood = mA + (mB - mA) * t;
           }
         }
@@ -270,7 +246,6 @@ export default function MindDashboard() {
       };
     }, [journal, focusSessions, range]);
 
-  // ---- Metrics
   const metrics: Metric[] = useMemo(() => {
     const label = RANGE_LABEL[range] ?? "selected range";
     const moodText = moodAvg != null ? `${moodAvg.toFixed(1)} / 10` : "–";
@@ -287,101 +262,19 @@ export default function MindDashboard() {
     ];
   }, [moodAvg, focusTotalMin, range]);
 
-  // ---- Charts (Overview)
   const chartsTop: ChartBlock[] = [
     {
       id: "journal-mood",
       title: "Mood by day",
-      render: () => {
-        const tickInterval = Math.max(1, Math.floor(moodLineSeries.length / 8));
-        return (
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
-              data={moodLineSeries}
-              margin={{ left: 12, right: 12, top: 12, bottom: 8 }}
-            >
-              <CartesianGrid
-                stroke="#2a2a2a"
-                strokeOpacity={0.12}
-                vertical={false}
-              />
-              <XAxis
-                dataKey="label"
-                {...axisStyle}
-                interval={tickInterval}
-                height={24}
-              />
-              <YAxis
-                {...axisStyle}
-                domain={[0, 10]}
-                ticks={[0, 2, 4, 6, 8, 10]}
-                width={32}
-              />
-              <Tooltip content={<MindTooltip />} />
-              <Line
-                type="monotone"
-                dataKey="mood"
-                name="Mood"
-                stroke={COLORS.netWorthBlue}
-                strokeWidth={2.4}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        );
-      },
+      render: () => <MoodChart moodLineSeries={moodLineSeries} />,
     },
     {
       id: "focus-minutes",
       title: `Focus time (minutes/day, ${RANGE_LABEL[range] || "range"})`,
-      render: () => {
-        const tickInterval = Math.max(1, Math.floor(focusSeries.length / 12));
-        return (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={focusSeries}
-              margin={{ left: 8, right: 8, top: 8, bottom: 4 }}
-            >
-              <defs>
-                <linearGradient id="gradFocus" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor={COLORS.incomeGreen}
-                    stopOpacity={0.9}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={COLORS.incomeGreen}
-                    stopOpacity={0.05}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                stroke="#2a2a2a"
-                strokeOpacity={0.12}
-                vertical={false}
-              />
-              <XAxis dataKey="label" {...axisStyle} interval={tickInterval} />
-              <YAxis {...axisStyle} width={34} />
-              <Tooltip content={<MindTooltip />} />
-              <Area
-                dataKey="minutes"
-                name="Minutes"
-                type="monotone"
-                stroke={COLORS.incomeGreen}
-                fill="url(#gradFocus)"
-                strokeWidth={2.2}
-                connectNulls
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        );
-      },
+      render: () => <FocusChart focusSeries={focusSeries} />,
     },
   ];
 
-  // ---- Tabs
   const tabs = (
     <PageTabs
       activeKey={tab}
@@ -396,7 +289,6 @@ export default function MindDashboard() {
     />
   );
 
-  // ---- Panel switch
   const panel =
     tab === "overview" ? null : (
       <>
