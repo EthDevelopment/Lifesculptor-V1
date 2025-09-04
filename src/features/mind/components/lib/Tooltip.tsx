@@ -1,6 +1,4 @@
 // src/features/mind/components/lib/Tooltip.tsx
-import React from "react";
-
 export function MindTooltip({ label, payload }: any) {
   const items = Array.isArray(payload)
     ? payload.filter((p) => p && p.value != null)
