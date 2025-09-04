@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMindStore } from "@/domains/mind/store";
 
 export default function IdeasPanel() {
@@ -16,36 +16,53 @@ export default function IdeasPanel() {
     [ideas]
   );
 
+  const detailsRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (!detailsRef.current) return;
+    detailsRef.current.style.height = "0px";
+    detailsRef.current.style.height = detailsRef.current.scrollHeight + "px";
+  }, [details]);
+
   const saveNew = () => {
     const t = title.trim();
-    if (!t) return;
-    addIdea(t, expanded ? details : undefined);
+    if (!t && !details.trim()) return;
+    addIdea(t || "Untitled idea", expanded ? details : undefined);
     setTitle("");
     setDetails("");
     setExpanded(false);
   };
 
+  const onComposerKey = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "enter") {
+      e.preventDefault();
+      saveNew();
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Composer */}
-      <div className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-6">
-        <label className="mb-2 block text-sm text-neutral-300">
-          Quick idea (one line)
+      <div className="rounded-xl border border-neutral-800/80 bg-neutral-950/60 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)] backdrop-blur-sm">
+        <label className="mb-2 block text-xs uppercase tracking-wide text-neutral-500">
+          Quick idea
         </label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={`e.g., "a hat for cats"`}
-          className="mb-3 w-full rounded-md border border-neutral-800 bg-neutral-900/80 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 outline-none focus:border-neutral-600"
+          onKeyDown={onComposerKey}
+          placeholder="Any ideas...? (⌘/Ctrl + Enter to save)"
+          className="mb-3 w-full rounded-md border border-neutral-800 bg-neutral-900/80 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-neutral-600"
         />
 
         {expanded ? (
           <textarea
+            ref={detailsRef}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="Expand on the idea…"
-            rows={6}
-            className="mb-3 w-full rounded-md border border-neutral-800 bg-neutral-900/80 p-3 text-sm text-neutral-200 placeholder-neutral-500 outline-none focus:border-neutral-600"
+            onKeyDown={onComposerKey}
+            placeholder="Expand on the idea… (⌘/Ctrl + Enter to save)"
+            rows={4}
+            className="mb-3 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/80 p-3 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-neutral-600"
           />
         ) : null}
 
@@ -55,25 +72,25 @@ export default function IdeasPanel() {
             onClick={() => setExpanded((v) => !v)}
             className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-800"
           >
-            {expanded ? "Hide details" : "Expand on this"}
+            {expanded ? "Hide details" : "Add details"}
           </button>
           <button
             type="button"
             onClick={saveNew}
             className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
           >
-            Save
+            Save idea
           </button>
         </div>
       </div>
 
       {/* List */}
-      <div className="rounded-lg border border-neutral-800 bg-neutral-950/60">
-        <div className="border-b border-neutral-800 px-4 py-3 text-sm text-neutral-400">
-          Ideas ({ordered.length})
+      <div className="rounded-xl border border-neutral-800/80 bg-neutral-950/60 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+        <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3 text-sm text-neutral-400">
+          <span>Ideas ({ordered.length})</span>
         </div>
 
-        <div className="max-h-96 overflow-y-auto p-2">
+        <div className="max-h-96 overflow-y-auto p-3">
           {ordered.length === 0 ? (
             <div className="p-6 text-sm text-neutral-400">
               No ideas yet. Jot one above.
@@ -115,6 +132,13 @@ function IdeaRow({
   const [title, setTitle] = useState(idea.title);
   const [details, setDetails] = useState(idea.details ?? "");
 
+  const detailsRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (!detailsRef.current) return;
+    detailsRef.current.style.height = "0px";
+    detailsRef.current.style.height = detailsRef.current.scrollHeight + "px";
+  }, [details]);
+
   const save = () => {
     const patch: Partial<{ title: string; details?: string }> = {};
     if (title.trim() !== idea.title) patch.title = title.trim();
@@ -125,21 +149,29 @@ function IdeaRow({
     setEditing(false);
   };
 
+  const onRowKey = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "enter") {
+      e.preventDefault();
+      save();
+    }
+  };
+
   return (
-    <li className="rounded-md border border-neutral-800 bg-neutral-900/50 p-3">
+    <li className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3">
       {editing ? (
-        <div className="space-y-2">
+        <div className="space-y-2" onKeyDown={onRowKey}>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-md border border-neutral-800 bg-neutral-900/80 px-3 py-2 text-sm text-neutral-200 outline-none focus:border-neutral-600"
+            className="w-full rounded-md border border-neutral-800 bg-neutral-900/80 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-neutral-600"
           />
           <textarea
+            ref={detailsRef}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="Add more color…"
-            rows={4}
-            className="w-full rounded-md border border-neutral-800 bg-neutral-900/80 p-3 text-sm text-neutral-200 outline-none focus:border-neutral-600"
+            placeholder="Add more color… (⌘/Ctrl + Enter to save)"
+            rows={3}
+            className="w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/80 p-3 text-sm text-neutral-100 outline-none focus:border-neutral-600"
           />
           <div className="flex items-center gap-2">
             <button
@@ -159,11 +191,11 @@ function IdeaRow({
       ) : (
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-sm font-medium text-neutral-200">
+            <div className="text-sm font-medium text-neutral-100">
               {idea.title}
             </div>
             {idea.details ? (
-              <div className="mt-1 whitespace-pre-wrap text-sm text-neutral-400">
+              <div className="mt-1 whitespace-pre-wrap text-sm leading-6 text-neutral-300">
                 {idea.details}
               </div>
             ) : null}

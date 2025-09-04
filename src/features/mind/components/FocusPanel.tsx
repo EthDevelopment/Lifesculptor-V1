@@ -108,16 +108,13 @@ export default function FocusPanel() {
   // Keyboard handler for modal
   const onModalKey = (e: React.KeyboardEvent) => {
     if (!customOpen) return;
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      startCustom();
-    } else if (e.key === "Escape") {
-      setCustomOpen(false);
-    }
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) startCustom();
+    else if (e.key === "Escape") setCustomOpen(false);
   };
 
   return (
-    <div className="w-full rounded-lg border border-neutral-800 bg-neutral-950/60 p-6 text-neutral-300">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="w-full rounded-xl border border-neutral-800/80 bg-neutral-950/60 p-6 text-neutral-300 shadow-[0_10px_30px_rgba(0,0,0,0.25)] backdrop-blur-sm">
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="text-base font-semibold text-neutral-200">Focus Work</h3>
         {!activeFocus && (
           <div className="flex gap-2">
@@ -154,8 +151,8 @@ export default function FocusPanel() {
             </span>
           </div>
 
-          <div className="mb-3 flex items-baseline gap-3">
-            <div className="text-4xl font-semibold tabular-nums text-neutral-100">
+          <div className="mb-4 flex items-baseline gap-3">
+            <div className="text-5xl font-semibold tabular-nums text-neutral-100">
               {fmt(remaining)}
             </div>
             <div className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs font-medium uppercase tracking-wide">
@@ -171,9 +168,9 @@ export default function FocusPanel() {
             </div>
           </div>
 
-          <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-neutral-800">
+          <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-neutral-800">
             <div
-              className="h-full rounded-full bg-neutral-200 transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300 transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -231,7 +228,7 @@ export default function FocusPanel() {
       {customOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
           <div
-            className="w-full max-w-md rounded-lg border border-neutral-800 bg-neutral-950 p-4 shadow-xl"
+            className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-950 p-4 shadow-xl"
             onKeyDown={onModalKey}
             tabIndex={0}
           >
